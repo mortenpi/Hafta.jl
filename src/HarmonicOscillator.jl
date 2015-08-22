@@ -159,6 +159,8 @@ function Base.length(b::SortedWMatrixKeys)
   W4(b.N)
 end
 
+# Generates a lookup table (type WMatrix) of the matrix elements of
+# the one-dimensional delta interaction for the first `n` basis states.
 function generate_wmatrix(n::Integer)
   keys = SortedWMatrixKeys(n)
   values = Array(Float64, length(keys))
