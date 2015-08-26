@@ -58,7 +58,7 @@ end
 # ===================================================================
 
 # Returns a 1D harmonic oscillator basis function.
-function Psi(n::Int, x0::FloatingPoint=1.0)
+function Psi(n::Integer, x0::FloatingPoint=1.0)
   p=Orthopolys.phhermite(n+1, Float64)
   C = 1/((pi^.25)*sqrt(x0*(2^n)*factorial(n)))
   f(x) = begin
