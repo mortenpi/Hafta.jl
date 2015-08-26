@@ -12,6 +12,7 @@ import Base.next
 import Base.length
 import Base.getindex
 
+export Psi
 export WMatrix
 export generate_wmatrix
 
