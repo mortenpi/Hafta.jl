@@ -20,6 +20,16 @@ export generate_wmatrix
 # Generic helper functions and macros
 # ===================================================================
 
+# An empty expression :() seems to be a tuple with no arguments.
+# One thing I noticed though -- :() does not always contruct Expr
+# object. E.g. :(5) is just an Int64 and :(var) gives a Symbol.
+# So, at the moment the method just fails with those "expressions",
+# because I force the argument to be an ::Expr.
+# TODO: Handle non-Expr expressions as well?
+function empty_expression(expr::Expr)
+    (expr.head == :tuple) && (length(expr.args) == 0)
+end
+
 # Returns the expression where elements of xs have been chained
 # together with op.
 function chainoperator(op,xs)
@@ -34,21 +44,16 @@ end
 # Calls the function f with sorted arguments.
 macro ordered_fcall(f, key...)
     ret::Expr = :()
-    isfirstpermutation = true
+    @show key
     for p=permutations(key)
-        chk = chainoperator(<=, p)
-        call = :( $f($(p...)) )
-        if !isfirstpermutation
-            ret = quote
-                if $chk
-                    $call
-                else
-                    $ret
-                end
+        check_expr = chainoperator(<=, p)
+        call_expr = :( $f($(p...)) )
+        ret = empty_expression(ret) ? call_expr : quote
+            if $check_expr
+                $call_expr
+            else
+                $ret
             end
-        else
-            isfirstpermutation=false
-            ret = call
         end
     end
     ret
