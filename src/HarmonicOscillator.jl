@@ -44,7 +44,6 @@ end
 # Calls the function f with sorted arguments.
 macro ordered_fcall(f, key...)
     ret::Expr = :()
-    @show key
     for p=permutations(key)
         check_expr = chainoperator(<=, p)
         call_expr = :( $f($(p...)) )
