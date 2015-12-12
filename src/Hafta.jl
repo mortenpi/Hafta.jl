@@ -30,4 +30,8 @@ include("HartreeFock.jl")
 using .HartreeFock
 export hartreefock
 
+include("HFB.jl")
+using .HFB
+export hfb
+
 end
