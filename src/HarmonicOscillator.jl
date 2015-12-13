@@ -4,7 +4,6 @@ module HarmonicOscillator
 import Iterators
 import Polynomials
 import Orthopolys
-import Cubature
 
 import Base.start
 import Base.done
