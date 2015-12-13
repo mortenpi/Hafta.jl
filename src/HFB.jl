@@ -56,6 +56,7 @@ function writemime(io, ::MIME"text/html", state::HFBState)
     write(io, "<table>")
     write(io, "<tr><th colspan=\"2\" style=\"text-align: center;\">HFBState $(size(state.U))</th></tr>")
 
+    # Table of energies and other values
     E, Ek, Ei, Ep = energy(state)
     Aest = trace(state.rho)
     html = """
@@ -79,21 +80,7 @@ function writemime(io, ::MIME"text/html", state::HFBState)
     """
     write(io,format(html, E, Ek, Ei, Ep, Aest))
 
-    minz = min(minimum(state.U), minimum(state.V))
-    maxz = max(maximum(state.U), maximum(state.V))
-    scale = Scale.color_continuous(minvalue=minz, maxvalue=maxz)
-
-    write(io, "<tr>")
-    write(io, "<td>")
-    p = spy(abs(state.U), Guide.title("U matrix"), scale)
-    draw(SVG(io,width,height,false), p)
-    write(io, "</td>")
-    write(io, "<td>")
-    p = spy(abs(state.V), Guide.title("V matrix"), scale)
-    draw(SVG(io,width,height,false), p)
-    write(io, "</td>")
-    write(io, "</tr>")
-
+    # rho and kappa matrices
     rho,kappa = state.rho, abs(state.kappa)
     minz = min(minimum(rho), minimum(kappa))
     maxz = max(maximum(rho), maximum(kappa))
@@ -110,6 +97,23 @@ function writemime(io, ::MIME"text/html", state::HFBState)
     write(io, "</td>")
     write(io, "</tr>")
 
+    # U and V matrices
+    minz = min(minimum(state.U), minimum(state.V))
+    maxz = max(maximum(state.U), maximum(state.V))
+    scale = Scale.color_continuous(minvalue=minz, maxvalue=maxz)
+
+    write(io, "<tr>")
+    write(io, "<td>")
+    p = spy(abs(state.U), Guide.title("U matrix"), scale)
+    draw(SVG(io,width,height,false), p)
+    write(io, "</td>")
+    write(io, "<td>")
+    p = spy(abs(state.V), Guide.title("V matrix"), scale)
+    draw(SVG(io,width,height,false), p)
+    write(io, "</td>")
+    write(io, "</tr>")
+
+    # the end
     write(io, "</table>")
 end
 
