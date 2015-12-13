@@ -1,4 +1,4 @@
-Pkg.add("Iterators")
+Pkg.add("Combinatorics")
 Pkg.add("Polynomials")
 Pkg.add("Formatting")
 Pkg.add("Gadfly")

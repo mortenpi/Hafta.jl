@@ -1,7 +1,7 @@
 # Functions and data structured related to the 1D harmonic oscillator
 module HarmonicOscillator
 
-import Iterators
+using Combinatorics # permutations() has moved to Combinatorics in 0.5
 import Polynomials
 import Orthopolys
 
