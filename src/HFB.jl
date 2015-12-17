@@ -137,6 +137,9 @@ end
 # TODO: this weird hack is necessary to append to the documentation of a type.
 @doc Docs.catdoc((@doc HFBIterator), Docs.typesummary(HFBIterator)) HFBIterator
 
+import Base: length
+length(hfbi::HFBIterator) = length(hfbi.es)
+
 import Hafta: energy
 import Hafta: iterate!
 import Hafta: solve!
