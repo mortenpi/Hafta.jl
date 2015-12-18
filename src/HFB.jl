@@ -81,10 +81,9 @@ function writemime(io, ::MIME"text/html", state::HFBState)
     write(io,format(html, E, Ek, Ei, Ep, Aest))
 
     # rho and kappa matrices
-    rho,kappa = state.rho, abs(state.kappa)
-    minz = min(minimum(rho), minimum(kappa))
+    rho,kappa = abs(state.rho), abs(state.kappa)
     maxz = max(maximum(rho), maximum(kappa))
-    scale = Scale.color_continuous(minvalue=minz, maxvalue=maxz)
+    scale = Scale.color_continuous(minvalue=0, maxvalue=maxz)
 
     write(io, "<tr>")
     write(io, "<td>")
@@ -98,9 +97,9 @@ function writemime(io, ::MIME"text/html", state::HFBState)
     write(io, "</tr>")
 
     # U and V matrices
-    minz = min(minimum(state.U), minimum(state.V))
-    maxz = max(maximum(state.U), maximum(state.V))
-    scale = Scale.color_continuous(minvalue=minz, maxvalue=maxz)
+    U,V = abs(state.U), abs(state.V)
+    maxz = max(maximum(U), maximum(V))
+    scale = Scale.color_continuous(minvalue=0, maxvalue=maxz)
 
     write(io, "<tr>")
     write(io, "<td>")
