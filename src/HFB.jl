@@ -3,7 +3,8 @@ module HFB
 using Gadfly
 using Formatting
 using Hafta
-#export hfb
+
+export hfb
 
 """
 `HFBState` stores a Bogoliubov transformation.
@@ -139,7 +140,288 @@ end
 import Base: length
 length(hfbi::HFBIterator) = length(hfbi.es)
 
+import Base: writemime
+function writemime(io, ::MIME"text/html", hfbi::HFBIterator)
+    width,height = 20cm,6cm
+
+    write(io, "<table>")
+    write(io, """
+    <tr>
+        <th style="text-align: center;">
+            HFBIterator ($(length(hfbi)) iterations)
+        </th>
+    </tr>""")
+
+    write(io, "<tr><td>")
+    logdiffs = log10(abs(diff(hfbi.es)))
+    p = plot(
+        x=1:length(logdiffs), y=logdiffs,
+        yintercept=[-13, -14, -15], Geom.hline(color="red"),
+        Geom.line,# Geom.point,
+        Guide.title("Convergence for energy"),
+        Guide.xlabel("n"), Guide.ylabel("log10(ΔE)")
+    )
+    draw(SVG(io,width, 1.5*height,false), p)
+    write(io, "</td></tr>")
+
+    # Output the first and the last state
+    if length(hfbi.states) > 1
+        write(io, """
+        <tr>
+        <th style="text-align: center; border-top: 3px solid black;">
+        Final state
+            </th>
+        </tr>""")
+        write(io, "<tr><td>")
+        writemime(io, "text/html", hfbi.states[end])
+        write(io, "</td></tr>")
+    end
+
+    if false
+        write(io, """
+        <tr>
+            <th style="text-align: center; border-top: 3px solid black;">
+                Initial state
+            </th>
+        </tr>""")
+        write(io, "<tr><td>")
+        writemime(io, "text/html", hfbi.states[1])
+        write(io, "</td></tr>")
+    end
+
+    write(io, "</table>")
+end
+
+"""
+`hfb(system, A)` constructs a `HFBIterator` object.
+
+Arguments:
+
+- `system` is the quantum many-body system (`<: ManyBodySystem`)
+- `A` is the number of particles
+"""
+function hfb(system, A; maxkappa=1)
+    N = size(system)
+    hfb = HFBIterator{typeof(system)}(system, A, [],[],[],[])
+
+    state = HFBState(system, zeros(Float64, (N,N)), zeros(Float64, (N,N)))
+    for i=1:A
+        state.rho[i,i] = 1.0
+    end
+
+    for d=2:1+maxkappa, i=1:div(N,d)
+        m = d*(i-1)+1
+        n = m+d-1
+        state.kappa[m,n] = 0.2
+        state.kappa[n,m] = -0.2
+    end
+
+    push!(hfb.states, state)
+    push!(hfb.es, energy(state)[1])
+
+    hfb
+end
+@doc Docs.functionsummary(hfb) hfb
+
+"""
+`gamma_delta(system, rho, kappa)` calculates the `gamma` and `delta`
+matrices from the `rho` and `kappa`. It also needs a system, since
+the `gamma` and `delta` also include the interaction `V(i,j,k,l)`.
+"""
+function gamma_delta(system, rho, kappa)
+    N = size(system)
+    delta = zeros(Float64, (N,N))
+    gamma = zeros(Float64, (N,N))
+    for i=1:N,j=1:N,k=1:N,l=1:N
+        gamma[i,j] += rho[k,l]*( V(system, i,k,j,l)-V(system, i,k,l,j) )
+        delta[i,j] += 0.5*kappa[k,l]*( V(system, i,j,k,l)-V(system, i,j,l,k) )
+    end
+    gamma,delta
+end
+
+"""`gamma_delta(::HFBState)` is a convenience wrapper it directly from a `HFBState`"""
+gamma_delta(state::HFBState) = gamma_delta(state.system, state.rho, state.kappa)
+
 import Hafta: energy
+function energy(state::HFBState)
+    N = size(state.system)
+    gamma,delta = gamma_delta(state)
+
+    T = zeros(Float64, (N,N))
+    for i=1:N, j=1:N
+        T[i,j] = H0(state.system, i,j)
+    end
+
+    Ef = trace(T*state.rho)
+    Ei = 0.5*trace(gamma*state.rho)
+    Ep = -0.5*trace(delta*state.kappa)
+    #trace( T*state.rho + 0.5*gamma*state.rho - 0.5*delta*state.kappa )
+    Ef+Ei+Ep, Ef, Ei, Ep
+end
+
+function solve_state(system,N,lambda,T,gamma,delta)
+    h = T + gamma - lambda*eye(N)
+    equation = zeros(Float64, (2*N, 2*N))
+    equation[1:N, 1:N] = h
+    equation[N+1:2N, N+1:2N] = -h
+    equation[1:N, N+1:2N] = delta
+    equation[N+1:2N, 1:N] = -delta
+
+    if !ishermitian(equation)
+        maxdiff = maximum(abs(equation-transpose(equation)))
+        if maxdiff > 1e-14
+            warn("Equation not hermitian (|diff| = $maxdiff)")
+        end
+        equation = 0.5*(equation+transpose(equation))
+    end
+
+    eigs = eigfact(equation)
+    perms = sortperm(eigs[:values], rev=true)[1:N]
+    U = eigs[:vectors][1:N, perms]
+    V = eigs[:vectors][N+1:2N, perms]
+
+    state = HFBState(system,U,V)
+    state, trace(state.rho), eigs
+end
+
 import Hafta: iterate!
+function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, lambdaepsilon=1e-10, verbose=false)
+    lambdaepsilon = min(nepsilon, lambdaepsilon)
+
+    if !(0.0 <= mixing < 1.0)
+        error("Invalid value for mixing in iterate!() ($mixing). Must be 0.0 <= mixing < 1.0.")
+    end
+
+    A,N = hfbi.A, size(hfbi.system)
+
+    T = zeros(Float64, (N,N))
+    for i=1:N, j=1:N
+        T[i,j] = H0(hfbi.system, i,j)
+    end
+
+    rho,kappa = if mixing != 0.0 && length(hfbi.states) > 1
+        state = hfbi.states[end]
+        oldstate = hfbi.states[end-1]
+        rho = (1.0 - mixing)*state.rho + mixing*oldstate.rho
+        kappa = (1.0 - mixing)*state.kappa + mixing*oldstate.kappa
+        rho, kappa
+    else
+        state = hfbi.states[end]
+        state.rho, state.kappa
+    end
+
+    gamma,delta = gamma_delta(hfbi.system, rho, kappa)
+
+    n0::Float64
+    lambda::Float64 = 0.0
+    nextstate::HFBState
+
+    nextstate,n0 = solve_state(hfbi.system,N,0.0,T,gamma,delta)
+    if verbose
+        println("lambdascan[initial]: 0.0 => $(n0)")
+    end
+
+    lambdas = 0.0, (n0 < A ? 1.0 : -1.0)
+    states = nextstate, nothing
+    n0s = n0, nothing
+
+    go_higher = (n0 < A)
+    nextstate,n0 = solve_state(hfbi.system,N,lambdas[2],T,gamma,delta)
+    if verbose
+        println("lambdascan[up/down]: $(lambdas[1]) - $(lambdas[2]) => $(n0)")
+    end
+    states = states[1], nextstate
+    n0s = n0s[1], n0
+
+    while go_higher && n0 < A || !go_higher && n0 > A
+        lambdas = lambdas[2], 2*lambdas[2]
+        nextstate,n0 = solve_state(hfbi.system,N,lambdas[2],T,gamma,delta)
+        states = states[2], nextstate
+        n0s = n0s[2], n0
+        if verbose
+            println("lambdascan[double ]: $(lambdas[1]) - $(lambdas[2]) => $(n0)")
+        end
+
+        maxiters -= 1
+        if maxiters == 0
+            error("Max iterations reached (doubling)")
+            return nothing
+        end
+    end
+
+    #lambdas = minimum(lambdas), maximum(lambdas)
+    if lambdas[1] > lambdas[2]
+        lambdas = lambdas[2], lambdas[1]
+        states = states[2], states[1]
+        n0s = n0s[2], n0s[1]
+    end
+
+    while abs(n0-A) > nepsilon
+        lambda = (lambdas[1]+lambdas[2])/2
+        nextstate,n0 = solve_state(hfbi.system,N,lambda,T,gamma,delta)
+        if verbose
+            println("lambdascan[binary ]: $(lambda) ($(lambdas[1]) - $(lambdas[2])) => $(n0)")
+        end
+        if n0 > A
+            lambdas = lambdas[1], lambda
+            states = states[1], nextstate
+            n0s = n0s[1], n0
+        else
+            lambdas = lambda, lambdas[2]
+            states = nextstate, states[2]
+            n0s = n0, n0s[2]
+        end
+
+        if abs(lambdas[2]-lambdas[1]) < lambdaepsilon
+            warn("No lambda convergence ($(lambdas) => $(n0s))")
+            #nextstate.U = zeros(Float64, (N,N))
+            #nextstate.V = zeros(Float64, (N,N))
+            w = (A-n0s[1])/(n0s[2]-n0s[1])
+            #info("Mixing: w = $w")
+            #lambda = (1-w)*lambdas[1] + w*lambdas[2]
+            #nextstate.rho = (1-w)*states[1].rho + w*states[2].rho
+            #nextstate.kappa = (1-w)*states[1].kappa + w*states[2].kappa
+            break
+        end
+
+        maxiters -= 1
+        if maxiters == 0
+            error("Max iterations reached (binary)")
+            return nothing
+        end
+    end
+
+    E,_ = energy(nextstate)
+    push!(hfbi.states, nextstate)
+    push!(hfbi.lambdas, lambda)
+    push!(hfbi.es, E)
+
+    #@show E
+    hfbi
+end
+
+function issolved(hfbi::HFBIterator, epsilon)
+    const mindeltas = 5
+    if length(hfbi.es) < mindeltas+1
+        false
+    else
+        maximum(abs(diff(hfbi.es[end-mindeltas:end]))) < epsilon
+    end
+end
+
 import Hafta: solve!
+function solve!(hfbi::HFBIterator; epsilon=1e-10, maxiters=20, lambdaiters=50, args...)
+    #args = Dict{Symbol, Any}(args)
+    while !issolved(hfbi, epsilon)
+        iterate!(hfbi; maxiters=lambdaiters, nepsilon=epsilon/10, args...)
+
+        maxiters -= 1
+        if maxiters == 0
+            error("Max iterations reached")
+            return nothing
+        end
+    end
+    hfbi.es[end]
+end
+
 end
