@@ -193,7 +193,7 @@ function writemime(io, ::MIME"text/html", hfbi::HFBIterator)
 end
 
 """
-`hfb(system, A)` constructs a `HFBIterator` object.
+`hfb(system, A; maxkappa)` constructs a `HFBIterator` object.
 
 Arguments:
 
@@ -275,13 +275,13 @@ function solve_state(system,N,lambda,T,gamma,delta)
         equation = 0.5*(equation+transpose(equation))
     end
 
-    eigs = eigfact(equation)
-    perms = sortperm(eigs[:values], rev=true)[1:N]
-    U = eigs[:vectors][1:N, perms]
-    V = eigs[:vectors][N+1:2N, perms]
+    efact = eigfact(equation)
+    perms = sortperm(efact[:values], rev=true)[1:N]
+    U = efact[:vectors][1:N, perms]
+    V = efact[:vectors][N+1:2N, perms]
 
     state = HFBState(system,U,V)
-    state, trace(state.rho), eigs
+    state, trace(state.rho), efact
 end
 
 import Hafta: iterate!
@@ -316,7 +316,7 @@ function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, l
     lambda::Float64 = 0.0
     nextstate::HFBState
 
-    nextstate,n0 = solve_state(hfbi.system,N,0.0,T,gamma,delta)
+    nextstate,n0,efact = solve_state(hfbi.system,N,0.0,T,gamma,delta)
     if verbose
         println("lambdascan[initial]: 0.0 => $(n0)")
     end
@@ -326,7 +326,7 @@ function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, l
     n0s = n0, nothing
 
     go_higher = (n0 < A)
-    nextstate,n0 = solve_state(hfbi.system,N,lambdas[2],T,gamma,delta)
+    nextstate,n0,efact = solve_state(hfbi.system,N,lambdas[2],T,gamma,delta)
     if verbose
         println("lambdascan[up/down]: $(lambdas[1]) - $(lambdas[2]) => $(n0)")
     end
@@ -335,7 +335,7 @@ function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, l
 
     while go_higher && n0 < A || !go_higher && n0 > A
         lambdas = lambdas[2], 2*lambdas[2]
-        nextstate,n0 = solve_state(hfbi.system,N,lambdas[2],T,gamma,delta)
+        nextstate,n0,efact = solve_state(hfbi.system,N,lambdas[2],T,gamma,delta)
         states = states[2], nextstate
         n0s = n0s[2], n0
         if verbose
@@ -358,7 +358,7 @@ function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, l
 
     while abs(n0-A) > nepsilon
         lambda = (lambdas[1]+lambdas[2])/2
-        nextstate,n0 = solve_state(hfbi.system,N,lambda,T,gamma,delta)
+        nextstate,n0,efact = solve_state(hfbi.system,N,lambda,T,gamma,delta)
         if verbose
             println("lambdascan[binary ]: $(lambda) ($(lambdas[1]) - $(lambdas[2])) => $(n0)")
         end
@@ -397,7 +397,7 @@ function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, l
     push!(hfbi.es, E)
 
     #@show E
-    hfbi
+    hfbi, efact
 end
 
 function issolved(hfbi::HFBIterator, epsilon)
@@ -412,8 +412,9 @@ end
 import Hafta: solve!
 function solve!(hfbi::HFBIterator; epsilon=1e-10, maxiters=20, lambdaiters=50, args...)
     #args = Dict{Symbol, Any}(args)
+    efact = nothing
     while !issolved(hfbi, epsilon)
-        iterate!(hfbi; maxiters=lambdaiters, nepsilon=epsilon/10, args...)
+        _,efact = iterate!(hfbi; maxiters=lambdaiters, nepsilon=epsilon/10, args...)
 
         maxiters -= 1
         if maxiters == 0
@@ -421,7 +422,7 @@ function solve!(hfbi::HFBIterator; epsilon=1e-10, maxiters=20, lambdaiters=50, a
             return nothing
         end
     end
-    hfbi.es[end]
+    hfbi.es[end], efact
 end
 
 end
