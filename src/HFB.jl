@@ -2,7 +2,9 @@ module HFB
 
 using Gadfly
 using Formatting
+
 using Hafta
+import Hafta: ManyBodySystem
 
 export hfb
 
@@ -17,7 +19,7 @@ only for debugging purposes.
 Sometimes it might be that the the `rho`/`kappa` are defined directly, and then
 `U`/`V` will be undefined.
 """
-type HFBState{T <: Hafta.ManyBodySystem}
+type HFBState{T <: ManyBodySystem}
     # The many body system related to this state
     system::T
 
@@ -43,79 +45,10 @@ end
 # TODO: this weird hack is necessary to append to the documentation of a type.
 @doc Docs.catdoc((@doc HFBState), Docs.typesummary(HFBState)) HFBState
 
-HFBState{T<:Hafta.ManyBodySystem}(system::T, U, V) = HFBState{T}(system, U, V)
+HFBState{T<:ManyBodySystem}(system::T, U, V) = HFBState{T}(system, U, V)
 
 import Base: size
-function size(state::HFBState)
-    size(state.system)
-end
-
-import Base: writemime
-function writemime(io, ::MIME"text/html", state::HFBState)
-    width,height = 10cm,8cm
-
-    write(io, "<table>")
-    write(io, "<tr><th colspan=\"2\" style=\"text-align: center;\">HFBState $(size(state.U))</th></tr>")
-
-    # Table of energies and other values
-    E, Ek, Ei, Ep = energy(state)
-    Aest = trace(state.rho)
-    html = """
-    <tr><td colspan="2">
-    <table style="width: 100%; border: 1px solid gray;">
-    <tr>
-        <th>Energy</th>
-        <th>Free particles E</th>
-        <th>Interaction energy (Γ)</th>
-        <th>Pairing energy (Δ)</th>
-        <th>Particle number</th>
-    </tr>
-    <tr>
-        <td>{:.5f}</td>
-        <td>{:.5f}</td>
-        <td>{:.5f}</td>
-        <td>{:.5f}</td>
-        <td>{:.5f}</td>
-    </tr>
-    </table>
-    """
-    write(io,format(html, E, Ek, Ei, Ep, Aest))
-
-    # rho and kappa matrices
-    rho,kappa = abs(state.rho), abs(state.kappa)
-    maxz = max(maximum(rho), maximum(kappa))
-    scale = Scale.color_continuous(minvalue=0, maxvalue=maxz)
-
-    write(io, "<tr>")
-    write(io, "<td>")
-    p = spy(rho, Guide.title("rho matrix"), scale)
-    draw(SVG(io,width,height,false), p)
-    write(io, "</td>")
-    write(io, "<td>")
-    p = spy(kappa, Guide.title("kappa matrix"), scale)
-    draw(SVG(io,width,height,false), p)
-    write(io, "</td>")
-    write(io, "</tr>")
-
-    # U and V matrices
-    U,V = abs(state.U), abs(state.V)
-    maxz = max(maximum(U), maximum(V))
-    scale = Scale.color_continuous(minvalue=0, maxvalue=maxz)
-
-    write(io, "<tr>")
-    write(io, "<td>")
-    p = spy(abs(state.U), Guide.title("U matrix"), scale)
-    draw(SVG(io,width,height,false), p)
-    write(io, "</td>")
-    write(io, "<td>")
-    p = spy(abs(state.V), Guide.title("V matrix"), scale)
-    draw(SVG(io,width,height,false), p)
-    write(io, "</td>")
-    write(io, "</tr>")
-
-    # the end
-    write(io, "</table>")
-end
+size(state::HFBState) = size(state.system)
 
 
 """
@@ -124,7 +57,7 @@ The `HFBIterator` is what stores the state of the iteration.
 A `HFBIterator` object is the basis, which then can be iterated to solve
 the equations. The object should be constructed with `HFB.hfb`.
 """
-type HFBIterator{T <: Hafta.ManyBodySystem}
+type HFBIterator{T <: ManyBodySystem}
     # setup
     system::T
     A::Int64
@@ -140,57 +73,6 @@ end
 import Base: length
 length(hfbi::HFBIterator) = length(hfbi.es)
 
-import Base: writemime
-function writemime(io, ::MIME"text/html", hfbi::HFBIterator)
-    width,height = 20cm,6cm
-
-    write(io, "<table>")
-    write(io, """
-    <tr>
-        <th style="text-align: center;">
-            HFBIterator ($(length(hfbi)) iterations)
-        </th>
-    </tr>""")
-
-    write(io, "<tr><td>")
-    logdiffs = log10(abs(diff(hfbi.es)))
-    p = plot(
-        x=1:length(logdiffs), y=logdiffs,
-        yintercept=[-13, -14, -15], Geom.hline(color="red"),
-        Geom.line,# Geom.point,
-        Guide.title("Convergence for energy"),
-        Guide.xlabel("n"), Guide.ylabel("log10(ΔE)")
-    )
-    draw(SVG(io,width, 1.5*height,false), p)
-    write(io, "</td></tr>")
-
-    # Output the first and the last state
-    if length(hfbi.states) > 1
-        write(io, """
-        <tr>
-        <th style="text-align: center; border-top: 3px solid black;">
-        Final state
-            </th>
-        </tr>""")
-        write(io, "<tr><td>")
-        writemime(io, "text/html", hfbi.states[end])
-        write(io, "</td></tr>")
-    end
-
-    if false
-        write(io, """
-        <tr>
-            <th style="text-align: center; border-top: 3px solid black;">
-                Initial state
-            </th>
-        </tr>""")
-        write(io, "<tr><td>")
-        writemime(io, "text/html", hfbi.states[1])
-        write(io, "</td></tr>")
-    end
-
-    write(io, "</table>")
-end
 
 """
 `hfb(system, A; maxkappa)` constructs a `HFBIterator` object.
@@ -223,15 +105,16 @@ function hfb(system, A; maxkappa=1)
 end
 @doc Docs.functionsummary(hfb) hfb
 
+
 """
 `gamma_delta(system, rho, kappa)` calculates the `gamma` and `delta`
 matrices from the `rho` and `kappa`. It also needs a system, since
 the `gamma` and `delta` also include the interaction `V(i,j,k,l)`.
 """
-function gamma_delta(system, rho, kappa)
+function gamma_delta(system::ManyBodySystem, rho::Matrix, kappa::Matrix)
     N = size(system)
-    delta = zeros(Float64, (N,N))
     gamma = zeros(Float64, (N,N))
+    delta = zeros(Float64, (N,N))
     for i=1:N,j=1:N,k=1:N,l=1:N
         gamma[i,j] += rho[k,l]*( V(system, i,k,j,l)-V(system, i,k,l,j) )
         delta[i,j] += 0.5*kappa[k,l]*( V(system, i,j,k,l)-V(system, i,j,l,k) )
@@ -423,6 +306,127 @@ function solve!(hfbi::HFBIterator; epsilon=1e-10, maxiters=20, lambdaiters=50, a
         end
     end
     hfbi.es[end], efact
+end
+
+
+# writemime functions and other decorative things
+import Base: writemime
+
+function writemime(io, ::MIME"text/html", state::HFBState)
+    width,height = 10cm,8cm
+
+    write(io, "<table>")
+    write(io, "<tr><th colspan=\"2\" style=\"text-align: center;\">HFBState $(size(state.U))</th></tr>")
+
+    # Table of energies and other values
+    E, Ek, Ei, Ep = energy(state)
+    Aest = trace(state.rho)
+    html = """
+    <tr><td colspan="2">
+    <table style="width: 100%; border: 1px solid gray;">
+    <tr>
+        <th>Energy</th>
+        <th>Free particles E</th>
+        <th>Interaction energy (Γ)</th>
+        <th>Pairing energy (Δ)</th>
+        <th>Particle number</th>
+    </tr>
+    <tr>
+        <td>{:.5f}</td>
+        <td>{:.5f}</td>
+        <td>{:.5f}</td>
+        <td>{:.5f}</td>
+        <td>{:.5f}</td>
+    </tr>
+    </table>
+    """
+    write(io,format(html, E, Ek, Ei, Ep, Aest))
+
+    # rho and kappa matrices
+    rho,kappa = abs(state.rho), abs(state.kappa)
+    maxz = max(maximum(rho), maximum(kappa))
+    scale = Scale.color_continuous(minvalue=0, maxvalue=maxz)
+
+    write(io, "<tr>")
+    write(io, "<td>")
+    p = spy(rho, Guide.title("rho matrix"), scale)
+    draw(SVG(io,width,height,false), p)
+    write(io, "</td>")
+    write(io, "<td>")
+    p = spy(kappa, Guide.title("kappa matrix"), scale)
+    draw(SVG(io,width,height,false), p)
+    write(io, "</td>")
+    write(io, "</tr>")
+
+    # U and V matrices
+    U,V = abs(state.U), abs(state.V)
+    maxz = max(maximum(U), maximum(V))
+    scale = Scale.color_continuous(minvalue=0, maxvalue=maxz)
+
+    write(io, "<tr>")
+    write(io, "<td>")
+    p = spy(abs(state.U), Guide.title("U matrix"), scale)
+    draw(SVG(io,width,height,false), p)
+    write(io, "</td>")
+    write(io, "<td>")
+    p = spy(abs(state.V), Guide.title("V matrix"), scale)
+    draw(SVG(io,width,height,false), p)
+    write(io, "</td>")
+    write(io, "</tr>")
+
+    # the end
+    write(io, "</table>")
+end
+
+function writemime(io, ::MIME"text/html", hfbi::HFBIterator)
+    width,height = 20cm,6cm
+
+    write(io, "<table>")
+    write(io, """
+    <tr>
+        <th style="text-align: center;">
+            HFBIterator ($(length(hfbi)) iterations)
+        </th>
+    </tr>""")
+
+    write(io, "<tr><td>")
+    logdiffs = log10(abs(diff(hfbi.es)))
+    p = plot(
+        x=1:length(logdiffs), y=logdiffs,
+        yintercept=[-13, -14, -15], Geom.hline(color="red"),
+        Geom.line,# Geom.point,
+        Guide.title("Convergence for energy"),
+        Guide.xlabel("n"), Guide.ylabel("log10(ΔE)")
+    )
+    draw(SVG(io,width, 1.5*height,false), p)
+    write(io, "</td></tr>")
+
+    # Output the first and the last state
+    if length(hfbi.states) > 1
+        write(io, """
+        <tr>
+        <th style="text-align: center; border-top: 3px solid black;">
+        Final state
+            </th>
+        </tr>""")
+        write(io, "<tr><td>")
+        writemime(io, "text/html", hfbi.states[end])
+        write(io, "</td></tr>")
+    end
+
+    if false
+        write(io, """
+        <tr>
+            <th style="text-align: center; border-top: 3px solid black;">
+                Initial state
+            </th>
+        </tr>""")
+        write(io, "<tr><td>")
+        writemime(io, "text/html", hfbi.states[1])
+        write(io, "</td></tr>")
+    end
+
+    write(io, "</table>")
 end
 
 end
