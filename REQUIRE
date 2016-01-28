@@ -1,0 +1,10 @@
+Combinatorics
+Formatting
+Gadfly
+Polynomials
+
+# The Orthopolys packages is not in the package repo.
+# Hence there should be the following in `deps/build.jl`
+#
+#   Pkg.clone("https://github.com/mortenpi/Orthopolys.jl.git")
+#
