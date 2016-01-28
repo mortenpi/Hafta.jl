@@ -37,7 +37,12 @@ end
     Docs.typesummary(Harmonic1DFermionSystem)
 ) Harmonic1DFermionSystem
 
+# size() is deprecated
 function Base.size(s::Harmonic1DFermionSystem)
+    2*s.shells
+end
+
+function Base.length(s::Harmonic1DFermionSystem)
     2*s.shells
 end
 
@@ -134,7 +139,12 @@ type Harmonic2DSystem <: Hafta.ManyBodySystem
     end
 end
 
+# size() is deprecated
 function Base.size(s::Harmonic2DSystem)
+    length(s.basis)
+end
+
+function Base.length(s::Harmonic2DSystem)
     length(s.basis)
 end
 

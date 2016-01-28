@@ -6,9 +6,13 @@ abstract QuantumBasis
 A `ManyBodySystem` is the abstract type that defines an pairwise interacting
 quantum system. It should have the following methods:
 
-  - `Base.size(s::T)`
-  - `H0(s::T, i, j)`
-  - `V(s::T, i, j, k, l)`
+  - `Base.length(s::T) -> Int`
+  - `H0(s::T, i, j) -> Float64`
+  - `V(s::T, i, j, k, l) -> Float64`
+
+Additionally, the following methods are deprecated.
+
+  - `Base.size(s::T) -> Int`
 """
 abstract ManyBodySystem
 function H0 end; export H0
