@@ -22,6 +22,7 @@ Sometimes it might be that the the `rho`/`kappa` are defined directly, and then
 type HFBState{T <: ManyBodySystem}
     # The many body system related to this state
     system::T
+    lambda::Float64
 
     # Intermediate objects constructed from the transformations
     rho::Matrix{Float64}
@@ -32,20 +33,20 @@ type HFBState{T <: ManyBodySystem}
     V::Matrix{Float64}
 
     """Constructs a `HFBState` from the `U` and `V` matrices."""
-    function HFBState(system::T, U::Matrix{Float64}, V::Matrix{Float64})
+    function HFBState(system::T, lambda::Float64, U::Matrix{Float64}, V::Matrix{Float64})
         N = size(system)
         @assert (N,N) == size(U) && (N,N) == size(V)
 
         VT = transpose(V)
         rho = V*VT
         kappa = -U*VT
-        new(system,rho,kappa,U,V)
+        new(system,lambda,rho,kappa,U,V)
     end
 end
 # TODO: this weird hack is necessary to append to the documentation of a type.
 @doc Docs.catdoc((@doc HFBState), Docs.typesummary(HFBState)) HFBState
 
-HFBState{T<:ManyBodySystem}(system::T, U, V) = HFBState{T}(system, U, V)
+HFBState{T<:ManyBodySystem}(system::T, lambda, U, V) = HFBState{T}(system, lambda, U, V)
 
 import Base: size
 size(state::HFBState) = size(state.system)
@@ -63,7 +64,6 @@ type HFBIterator{T <: ManyBodySystem}
     A::Int64
     # iteration variables
     states::Vector{HFBState{T}}
-    lambdas::Vector{Float64}
     es::Vector{Float64}
     eigenvalues::Vector{Vector{Float64}}
 end
@@ -84,9 +84,9 @@ Arguments:
 """
 function hfb(system, A; maxkappa=1)
     N = size(system)
-    hfb = HFBIterator{typeof(system)}(system, A, [],[],[],[])
+    hfb = HFBIterator{typeof(system)}(system, A, [],[],[])
 
-    state = HFBState(system, zeros(Float64, (N,N)), zeros(Float64, (N,N)))
+    state = HFBState(system, NaN, zeros(Float64, (N,N)), zeros(Float64, (N,N)))
     for i=1:A
         state.rho[i,i] = 1.0
     end
@@ -163,7 +163,7 @@ function solve_state(system,N,lambda,T,gamma,delta)
     U = efact[:vectors][1:N, perms]
     V = efact[:vectors][N+1:2N, perms]
 
-    state = HFBState(system,U,V)
+    state = HFBState(system,lambda,U,V)
     state, trace(state.rho), efact
 end
 
@@ -256,7 +256,7 @@ function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, l
         end
 
         if abs(lambdas[2]-lambdas[1]) < lambdaepsilon
-            warn("No lambda convergence ($(lambdas) => $(n0s))")
+            #warn("No lambda convergence ($(lambdas) => $(n0s))")
             #nextstate.U = zeros(Float64, (N,N))
             #nextstate.V = zeros(Float64, (N,N))
             w = (A-n0s[1])/(n0s[2]-n0s[1])
@@ -276,7 +276,6 @@ function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, l
 
     E,_ = energy(nextstate)
     push!(hfbi.states, nextstate)
-    push!(hfbi.lambdas, lambda)
     push!(hfbi.es, E)
 
     #@show E
@@ -330,8 +329,10 @@ function writemime(io, ::MIME"text/html", state::HFBState)
         <th>Interaction energy (Γ)</th>
         <th>Pairing energy (Δ)</th>
         <th>Particle number</th>
+        <th>Chem.pot.</th>
     </tr>
     <tr>
+        <td>{:.5f}</td>
         <td>{:.5f}</td>
         <td>{:.5f}</td>
         <td>{:.5f}</td>
@@ -340,7 +341,7 @@ function writemime(io, ::MIME"text/html", state::HFBState)
     </tr>
     </table>
     """
-    write(io,format(html, E, Ek, Ei, Ep, Aest))
+    write(io,format(html, E, Ek, Ei, Ep, Aest, state.lambda))
 
     # rho and kappa matrices
     rho,kappa = abs(state.rho), abs(state.kappa)
