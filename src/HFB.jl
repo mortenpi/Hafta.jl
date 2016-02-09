@@ -23,6 +23,7 @@ type HFBState{T <: ManyBodySystem}
     # The many body system related to this state
     system::T
     lambda::Float64
+    energies::Vector{Float64}
 
     # Intermediate objects constructed from the transformations
     rho::Matrix{Float64}
@@ -33,20 +34,20 @@ type HFBState{T <: ManyBodySystem}
     V::Matrix{Float64}
 
     """Constructs a `HFBState` from the `U` and `V` matrices."""
-    function HFBState(system::T, lambda::Float64, U::Matrix{Float64}, V::Matrix{Float64})
+    function HFBState(system::T, lambda::Float64, energies::Vector{Float64}, U::Matrix{Float64}, V::Matrix{Float64})
         N = size(system)
         @assert (N,N) == size(U) && (N,N) == size(V)
 
         VT = transpose(V)
         rho = V*VT
         kappa = -U*VT
-        new(system,lambda,rho,kappa,U,V)
+        new(system,lambda,energies,rho,kappa,U,V)
     end
 end
 # TODO: this weird hack is necessary to append to the documentation of a type.
 @doc Docs.catdoc((@doc HFBState), Docs.typesummary(HFBState)) HFBState
 
-HFBState{T<:ManyBodySystem}(system::T, lambda, U, V) = HFBState{T}(system, lambda, U, V)
+HFBState{T<:ManyBodySystem}(system::T, lambda, energies, U, V) = HFBState{T}(system, lambda, energies, U, V)
 
 import Base: size
 size(state::HFBState) = size(state.system)
@@ -86,7 +87,7 @@ function hfb(system, A; maxkappa=1)
     N = size(system)
     hfb = HFBIterator{typeof(system)}(system, A, [],[],[])
 
-    state = HFBState(system, NaN, zeros(Float64, (N,N)), zeros(Float64, (N,N)))
+    state = HFBState(system, NaN, Vector{Float64}(), zeros(Float64, (N,N)), zeros(Float64, (N,N)))
     for i=1:A
         state.rho[i,i] = 1.0
     end
@@ -160,10 +161,11 @@ function solve_state(system,N,lambda,T,gamma,delta)
 
     efact = eigfact(equation)
     perms = sortperm(efact[:values], rev=true)[1:N]
+    energies = efact[:values][perms]
     U = efact[:vectors][1:N, perms]
     V = efact[:vectors][N+1:2N, perms]
 
-    state = HFBState(system,lambda,U,V)
+    state = HFBState(system,lambda,energies,U,V)
     state, trace(state.rho), efact
 end
 
@@ -279,7 +281,7 @@ function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, l
     push!(hfbi.es, E)
 
     #@show E
-    hfbi, efact
+    hfbi
 end
 
 function issolved(hfbi::HFBIterator, epsilon)
@@ -304,7 +306,7 @@ function solve!(hfbi::HFBIterator; epsilon=1e-10, maxiters=20, lambdaiters=50, a
             return nothing
         end
     end
-    hfbi.es[end], efact
+    hfbi.es[end]
 end
 
 
