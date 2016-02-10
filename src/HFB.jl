@@ -160,7 +160,8 @@ function solve_state(system,N,lambda,T,gamma,delta)
     end
 
     efact = eigfact(equation)
-    perms = sortperm(efact[:values], rev=true)[1:N]
+
+    perms = sortperm(efact[:values])[N+1:2N]
     energies = efact[:values][perms]
     U = efact[:vectors][1:N, perms]
     V = efact[:vectors][N+1:2N, perms]
