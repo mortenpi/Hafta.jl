@@ -299,7 +299,7 @@ function solve!(hfbi::HFBIterator; epsilon=1e-10, maxiters=20, lambdaiters=50, a
     #args = Dict{Symbol, Any}(args)
     efact = nothing
     while !issolved(hfbi, epsilon)
-        _,efact = iterate!(hfbi; maxiters=lambdaiters, nepsilon=epsilon/10, args...)
+        iterate!(hfbi; maxiters=lambdaiters, nepsilon=epsilon/10, args...)
 
         maxiters -= 1
         if maxiters == 0
