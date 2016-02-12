@@ -48,7 +48,7 @@ H0(s::HFBSystem, i, j) = H0(s.system, i,j)
 V(s::HFBSystem, i, j, k, l) = V(s.system, i,j,k,l)
 length(s::HFBSystem) = length(s.system) # TODO: should it be "static" as well?
 
-Vbar(s::HFBSystem, i,j,k,l) = V(s.system, i,k,j,l) - V(s.system, i,k,l,j)
+Vbar(s::HFBSystem, i,j,k,l) = V(s.system, i,j,k,l) - V(s.system, i,j,l,k)
 
 """
 `HFBState` stores a Bogoliubov transformation.
