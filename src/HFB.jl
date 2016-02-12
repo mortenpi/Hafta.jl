@@ -9,6 +9,48 @@ import Hafta: ManyBodySystem
 export hfb
 
 """
+`HFBSystem{T}` is a wrapper around a `ManyBodySystem`.
+
+It provides some temporary variables useful for the HFB solver
+that are constructed from the systems `H0(i,j)` and `V(i,j,k,l)`
+functions.
+
+The fields are:
+
+    - `system::T` -- the many body system related to this state
+    - `Tij::Matrix{Float64}` -- a matrix form of the `H0(i,j)`
+
+The automatically provided methods are `H0`, `V` and `length`,
+and they just dispatch to the corresponding methods for the type `T`.
+
+An additional method provided is the `Vbar(::HFBSystem, i,j,k,l)`,
+which is the antisymmetrized version of `V`, which makes expressions
+for HFB simpler.
+"""
+type HFBSystem{T <: ManyBodySystem}
+    system::T
+    Tij::Matrix{Float64}
+
+    function HFBSystem(s::T)
+        M = length(s)
+        Tij = zeros(Float64, (M,M))
+        for i=1:M, j=1:M
+            Tij[i,j] = H0(s, i,j)
+        end
+        new(s,Tij)
+    end
+end
+HFBSystem{T}(s::T) = HFBSystem{T}(s)
+
+import Hafta: H0, V
+import Base: length
+H0(s::HFBSystem, i, j) = H0(s.system, i,j)
+V(s::HFBSystem, i, j, k, l) = V(s.system, i,j,k,l)
+length(s::HFBSystem) = length(s.system) # TODO: should it be "static" as well?
+
+Vbar(s::HFBSystem, i,j,k,l) = V(s.system, i,k,j,l) - V(s.system, i,k,l,j)
+
+"""
 `HFBState` stores a Bogoliubov transformation.
 
 The transformation is defined by the `U` and `V` matrices. The object also stores
@@ -21,7 +63,7 @@ Sometimes it might be that the the `rho`/`kappa` are defined directly, and then
 """
 type HFBState{T <: ManyBodySystem}
     # The many body system related to this state
-    system::T
+    system::HFBSystem{T}
     lambda::Float64
     energies::Vector{Float64}
 
@@ -34,9 +76,9 @@ type HFBState{T <: ManyBodySystem}
     V::Matrix{Float64}
 
     """Constructs a `HFBState` from the `U` and `V` matrices."""
-    function HFBState(system::T, lambda::Float64, energies::Vector{Float64}, U::Matrix{Float64}, V::Matrix{Float64})
-        N = size(system)
-        @assert (N,N) == size(U) && (N,N) == size(V)
+    function HFBState(system::HFBSystem{T}, lambda::Float64, energies::Vector{Float64}, U::Matrix{Float64}, V::Matrix{Float64})
+        M = length(system)
+        @assert (M,M) == size(U) && (M,M) == size(V)
 
         VT = transpose(V)
         rho = V*VT
@@ -47,7 +89,8 @@ end
 # TODO: this weird hack is necessary to append to the documentation of a type.
 @doc Docs.catdoc((@doc HFBState), Docs.typesummary(HFBState)) HFBState
 
-HFBState{T<:ManyBodySystem}(system::T, lambda, energies, U, V) = HFBState{T}(system, lambda, energies, U, V)
+HFBState{T<:ManyBodySystem}(system::HFBSystem{T}, lambda, energies, U, V) = HFBState{T}(system, lambda, energies, U, V)
+HFBState{T<:ManyBodySystem}(system::T, lambda, energies, U, V) = HFBState{T}(HFBSystem(system), lambda, energies, U, V)
 
 import Base: size
 size(state::HFBState) = size(state.system)
@@ -61,7 +104,7 @@ the equations. The object should be constructed with `HFB.hfb`.
 """
 type HFBIterator{T <: ManyBodySystem}
     # setup
-    system::T
+    system::HFBSystem{T}
     A::Int64
     # iteration variables
     states::Vector{HFBState{T}}
@@ -80,29 +123,30 @@ length(hfbi::HFBIterator) = length(hfbi.es)
 
 Arguments:
 
-- `system` is the quantum many-body system (`<: ManyBodySystem`)
-- `A` is the number of particles
+    - `system` is the quantum many-body system (`<: ManyBodySystem`)
+    - `A` is the number of particles
+    - `maxkappa` -- ???
 """
 function hfb(system, A; maxkappa=1)
-    N = size(system)
-    hfb = HFBIterator{typeof(system)}(system, A, [],[],[])
+    M = length(system)
+    hfbi = HFBIterator{typeof(system)}(HFBSystem(system), A, [],[],[])
 
-    state = HFBState(system, NaN, Vector{Float64}(), zeros(Float64, (N,N)), zeros(Float64, (N,N)))
+    state = HFBState(system, NaN, Vector{Float64}(), zeros(Float64, (M,M)), zeros(Float64, (M,M)))
     for i=1:A
         state.rho[i,i] = 1.0
     end
 
-    for d=2:1+maxkappa, i=1:div(N,d)
+    for d=2:1+maxkappa, i=1:div(M,d)
         m = d*(i-1)+1
         n = m+d-1
         state.kappa[m,n] = 0.2
         state.kappa[n,m] = -0.2
     end
 
-    push!(hfb.states, state)
-    push!(hfb.es, energy(state)[1])
+    push!(hfbi.states, state)
+    push!(hfbi.es, energy(state)[1])
 
-    hfb
+    hfbi
 end
 @doc Docs.functionsummary(hfb) hfb
 
@@ -112,13 +156,13 @@ end
 matrices from the `rho` and `kappa`. It also needs a system, since
 the `gamma` and `delta` also include the interaction `V(i,j,k,l)`.
 """
-function gamma_delta(system::ManyBodySystem, rho::Matrix, kappa::Matrix)
-    N = size(system)
-    gamma = zeros(Float64, (N,N))
-    delta = zeros(Float64, (N,N))
-    for i=1:N,j=1:N,k=1:N,l=1:N
-        gamma[i,j] += rho[k,l]*( V(system, i,k,j,l)-V(system, i,k,l,j) )
-        delta[i,j] += 0.5*kappa[k,l]*( V(system, i,j,k,l)-V(system, i,j,l,k) )
+function gamma_delta(system::HFBSystem, rho::Matrix, kappa::Matrix)
+    M = length(system)
+    gamma = zeros(Float64, (M,M))
+    delta = zeros(Float64, (M,M))
+    for i=1:M,j=1:M,k=1:M,l=1:M
+        gamma[i,j] += rho[k,l] * Vbar(system, i,k,j,l)
+        delta[i,j] += 0.5*kappa[k,l] * Vbar(system, i,j,k,l)
     end
     gamma,delta
 end
@@ -128,7 +172,7 @@ gamma_delta(state::HFBState) = gamma_delta(state.system, state.rho, state.kappa)
 
 import Hafta: energy
 function energy(state::HFBState)
-    N = size(state.system)
+    N = length(state.system)
     gamma,delta = gamma_delta(state)
 
     T = zeros(Float64, (N,N))
@@ -178,7 +222,7 @@ function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, l
         error("Invalid value for mixing in iterate!() ($mixing). Must be 0.0 <= mixing < 1.0.")
     end
 
-    A,N = hfbi.A, size(hfbi.system)
+    A,N = hfbi.A, length(hfbi.system)
 
     T = zeros(Float64, (N,N))
     for i=1:N, j=1:N
