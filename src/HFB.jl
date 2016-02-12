@@ -187,13 +187,14 @@ function energy(state::HFBState)
     Ef+Ei+Ep, Ef, Ei, Ep
 end
 
-function solve_state(system,N,lambda,T,gamma,delta)
-    h = T + gamma - lambda*eye(N)
-    equation = zeros(Float64, (2*N, 2*N))
-    equation[1:N, 1:N] = h
-    equation[N+1:2N, N+1:2N] = -h
-    equation[1:N, N+1:2N] = delta
-    equation[N+1:2N, 1:N] = -delta
+function solve_state(system,T,gamma,delta,lambda)
+    M = length(system)
+    h = T + gamma - lambda*eye(M)
+    equation = zeros(Float64, (2*M, 2*M))
+    equation[1:M, 1:M] = h
+    equation[M+1:2M, M+1:2M] = -h
+    equation[1:M, M+1:2M] = delta
+    equation[M+1:2M, 1:M] = -delta
 
     if !ishermitian(equation)
         maxdiff = maximum(abs(equation-transpose(equation)))
@@ -205,14 +206,17 @@ function solve_state(system,N,lambda,T,gamma,delta)
 
     efact = eigfact(equation)
 
-    perms = sortperm(efact[:values])[N+1:2N]
+    perms = sortperm(efact[:values])[M+1:2M]
     energies = efact[:values][perms]
-    U = efact[:vectors][1:N, perms]
-    V = efact[:vectors][N+1:2N, perms]
+    U = efact[:vectors][1:M, perms]
+    V = efact[:vectors][M+1:2M, perms]
 
     state = HFBState(system,lambda,energies,U,V)
     state, trace(state.rho), efact
 end
+
+# deprecated solve_state
+solve_state(system,N,lambda,T,gamma,delta) = solve_state(system,T,gamma,delta,lambda)
 
 import Hafta: iterate!
 function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, lambdaepsilon=1e-10, verbose=false)
