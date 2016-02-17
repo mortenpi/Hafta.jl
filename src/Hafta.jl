@@ -23,8 +23,9 @@ function energy end; export energy
 function iterate! end; export iterate!
 function solve! end; export solve!
 
-include("HarmonicOscillator.jl")
+include("Utils.jl")
 
+include("HarmonicOscillator.jl")
 include("HarmonicSystems.jl")
 using .HarmonicSystems
 export Harmonic1DFermionSystem
