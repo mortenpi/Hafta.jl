@@ -237,7 +237,9 @@ function iterate_lambda(system::HFBSystem,rho,kappa,A; lambdaepsilon=1e-12, neps
 
     λmin,λmax = find_value(f,A; xeps=lambdaepsilon, yeps=nepsilon, maxiters=maxiters, verbose=verbose)
 
-    nextstate,_ = solve_state(system,system.Tij,gamma,delta,λmin)
+    # for the choice of lambda see:
+    #   https://lund.mortenpi.eu/hafta/2016/02/17/hfb-lambda-fix.html
+    nextstate,_ = solve_state(system,system.Tij,gamma,delta,0.5*(λmin+λmax))
     nextstate
 end
 
