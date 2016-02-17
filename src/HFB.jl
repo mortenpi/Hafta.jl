@@ -5,6 +5,7 @@ using Formatting
 
 using Hafta
 import Hafta: ManyBodySystem
+import Hafta.Utils: find_value
 
 export hfb
 
@@ -218,6 +219,28 @@ end
 # deprecated solve_state
 solve_state(system,N,lambda,T,gamma,delta) = solve_state(system,T,gamma,delta,lambda)
 
+"""
+`iterate_lambda` uses binary search to find the next solution.
+
+The underlying assumption is that the particle number of the HFB solution
+is a monotonically increasing function of lambda.
+"""
+function iterate_lambda(system::HFBSystem,rho,kappa,A; lambdaepsilon=1e-12, nepsilon=lambdaepsilon, maxiters=100, verbose=false)
+    if verbose @show lambdaepsilon nepsilon end
+    M = length(system)
+    gamma,delta = gamma_delta(system, rho, kappa)
+
+    function f(λ)
+        _,n = solve_state(system,system.Tij,gamma,delta,λ)
+        n
+    end
+
+    λmin,λmax = find_value(f,A; xeps=lambdaepsilon, yeps=nepsilon, maxiters=maxiters, verbose=verbose)
+
+    nextstate,_ = solve_state(system,system.Tij,gamma,delta,λmin)
+    nextstate
+end
+
 import Hafta: iterate!
 function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, lambdaepsilon=1e-10, verbose=false)
     lambdaepsilon = min(nepsilon, lambdaepsilon)
@@ -244,86 +267,7 @@ function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, l
         state.rho, state.kappa
     end
 
-    gamma,delta = gamma_delta(hfbi.system, rho, kappa)
-
-    n0::Float64
-    lambda::Float64 = 0.0
-    nextstate::HFBState
-
-    nextstate,n0,efact = solve_state(hfbi.system,N,0.0,T,gamma,delta)
-    if verbose
-        println("lambdascan[initial]: 0.0 => $(n0)")
-    end
-
-    lambdas = 0.0, (n0 < A ? 1.0 : -1.0)
-    states = nextstate, nothing
-    n0s = n0, nothing
-
-    go_higher = (n0 < A)
-    nextstate,n0,efact = solve_state(hfbi.system,N,lambdas[2],T,gamma,delta)
-    if verbose
-        println("lambdascan[up/down]: $(lambdas[1]) - $(lambdas[2]) => $(n0)")
-    end
-    states = states[1], nextstate
-    n0s = n0s[1], n0
-
-    while go_higher && n0 < A || !go_higher && n0 > A
-        lambdas = lambdas[2], 2*lambdas[2]
-        nextstate,n0,efact = solve_state(hfbi.system,N,lambdas[2],T,gamma,delta)
-        states = states[2], nextstate
-        n0s = n0s[2], n0
-        if verbose
-            println("lambdascan[double ]: $(lambdas[1]) - $(lambdas[2]) => $(n0)")
-        end
-
-        maxiters -= 1
-        if maxiters == 0
-            error("Max iterations reached (doubling)")
-            return nothing
-        end
-    end
-
-    #lambdas = minimum(lambdas), maximum(lambdas)
-    if lambdas[1] > lambdas[2]
-        lambdas = lambdas[2], lambdas[1]
-        states = states[2], states[1]
-        n0s = n0s[2], n0s[1]
-    end
-
-    while abs(n0-A) > nepsilon
-        lambda = (lambdas[1]+lambdas[2])/2
-        nextstate,n0,efact = solve_state(hfbi.system,N,lambda,T,gamma,delta)
-        if verbose
-            println("lambdascan[binary ]: $(lambda) ($(lambdas[1]) - $(lambdas[2])) => $(n0)")
-        end
-        if n0 > A
-            lambdas = lambdas[1], lambda
-            states = states[1], nextstate
-            n0s = n0s[1], n0
-        else
-            lambdas = lambda, lambdas[2]
-            states = nextstate, states[2]
-            n0s = n0, n0s[2]
-        end
-
-        if abs(lambdas[2]-lambdas[1]) < lambdaepsilon
-            #warn("No lambda convergence ($(lambdas) => $(n0s))")
-            #nextstate.U = zeros(Float64, (N,N))
-            #nextstate.V = zeros(Float64, (N,N))
-            w = (A-n0s[1])/(n0s[2]-n0s[1])
-            #info("Mixing: w = $w")
-            #lambda = (1-w)*lambdas[1] + w*lambdas[2]
-            #nextstate.rho = (1-w)*states[1].rho + w*states[2].rho
-            #nextstate.kappa = (1-w)*states[1].kappa + w*states[2].kappa
-            break
-        end
-
-        maxiters -= 1
-        if maxiters == 0
-            error("Max iterations reached (binary)")
-            return nothing
-        end
-    end
+    nextstate = iterate_lambda(hfbi.system,rho,kappa,A; lambdaepsilon=lambdaepsilon,nepsilon=nepsilon,maxiters=maxiters,verbose=verbose)
 
     E,_ = energy(nextstate)
     push!(hfbi.states, nextstate)
