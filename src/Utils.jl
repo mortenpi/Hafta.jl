@@ -28,8 +28,11 @@ function find_value(f::Function, y0::Number; xeps=1e-10, yeps=xeps, maxiters=100
         xmax = _fv_binary_upper(xmid,xmax, f,y0,xeps,yeps,maxiters,verbose)
         xmin, xmax
     end
-    if verbose println("[find_value: final] xmin=$xmin, xmax=$xmax") end
-    if verbose println("[find_value: final] f(xmin)=$(f(xmin)), xmax=$(f(xmax))") end
+    if verbose
+        println("[find_value: final] xmin=$xmin, xmax=$xmax")
+        println("[find_value: final] f(xmin)=$(f(xmin))")
+        println("[find_value: final] f(xmax)=$(f(xmax))")
+    end
     @assert abs(f(xmin) - y0) < yeps
     @assert abs(f(xmax) - y0) < yeps
     xmin,xmax
