@@ -388,15 +388,26 @@ function writemime(io, ::MIME"text/html", hfbi::HFBIterator)
     </tr>""")
 
     write(io, "<tr><td>")
+    p = plot(
+        x=1:length(hfbi.es), y=hfbi.es,
+        Geom.line,# Geom.point,
+        Guide.title("Absolute value of energy"),
+        Guide.xlabel("Iteration"), Guide.ylabel("E")
+    )
+    draw(SVG(io,width, height,false), p)
+    #write(io, "</td></tr>")
+    write(io, "<br /")
+
+    #write(io, "<tr><td>")
     logdiffs = log10(abs(diff(hfbi.es)))
     p = plot(
         x=1:length(logdiffs), y=logdiffs,
-        yintercept=[-13, -14, -15], Geom.hline(color="red"),
+        yintercept=[-10, -15], Geom.hline(color="red"),
         Geom.line,# Geom.point,
-        Guide.title("Convergence for energy"),
-        Guide.xlabel("n"), Guide.ylabel("log10(ΔE)")
+        Guide.title("Differences of consecutive energies"),
+        Guide.xlabel("Iteration"), Guide.ylabel("log10(ΔE)")
     )
-    draw(SVG(io,width, 1.5*height,false), p)
+    draw(SVG(io,width, height,false), p)
     write(io, "</td></tr>")
 
     # Output the first and the last state
