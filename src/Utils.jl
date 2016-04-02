@@ -73,6 +73,9 @@ function _fv_binary_lower(xmin,xmax,f,y0,xeps,yeps,maxiters,verbose)
 end
 
 # returns: (converged::Bool, xmin, xmid, xmax)
+# Convergence here means that the limit on the x-axis (xeps) has been reached.
+# In that sense it is a bad thing in this context, since it also implies that
+# the y value has not converged.
 function _fv_binary(xmin,xmax,f,y0,xeps,yeps,maxiters,verbose)
     xs = xmin,xmax
     y::Float64 = 0.0
