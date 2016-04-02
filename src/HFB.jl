@@ -244,7 +244,7 @@ function iterate_lambda(system::HFBSystem,rho,kappa,A; lambdaepsilon=1e-12, neps
 end
 
 import Hafta: iterate!
-function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, lambdaepsilon=1e-10, verbose=false)
+function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, lambdaepsilon=nepsilon/10, verbose=false)
     lambdaepsilon = min(nepsilon, lambdaepsilon)
 
     if !(0.0 <= mixing < 1.0)
