@@ -1,5 +1,5 @@
 Hafta API overview
-=======================
+==================
 
 A high level overview of structures and functions in the Hafta.jl package.
 

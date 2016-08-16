@@ -1,4 +1,11 @@
 language: julia
+
 julia:
-  - release
-#  - nightly
+  - 0.4
+  - 0.5
+  #- nightly
+
+after_success:
+    - julia -e 'Pkg.add("Documenter")'
+    - julia -e 'Pkg.checkout("Documenter")'
+    - julia docs/make.jl
