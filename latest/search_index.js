@@ -13,7 +13,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Introduction",
     "title": "Hafta.jl",
     "category": "section",
-    "text": "Hartree-Fock and others for quantum systems."
+    "text": "Hartree-Fock and others numeric methods for quantum systems."
 },
 
 {
