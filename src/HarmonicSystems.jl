@@ -31,11 +31,6 @@ type Harmonic1DFermionSystem <: Hafta.ManyBodySystem
         new(N, wmatrix, vcoef)
     end
 end
-# TODO: this weird hack is necessary to append to the documentation of a type.
-@doc Docs.catdoc(
-    (@doc Harmonic1DFermionSystem),
-    Docs.typesummary(Harmonic1DFermionSystem)
-) Harmonic1DFermionSystem
 
 # size() is deprecated
 function Base.size(s::Harmonic1DFermionSystem)

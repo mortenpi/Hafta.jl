@@ -22,8 +22,6 @@ type HartreeFockIterator{T <: Hafta.ManyBodySystem}
     es::Vector{Float64}
     eigenvalues::Vector{Vector{Float64}}
 end
-# TODO: this weird hack is necessary to append to the documentation of a type.
-@doc Docs.catdoc((@doc HartreeFockIterator), Docs.typesummary(HartreeFockIterator)) HartreeFockIterator
 
 """
 `hartreefock(system, A)` constructs a `HartreeFockIterator` object.
@@ -43,7 +41,6 @@ function hartreefock(system, A)
 
     hf
 end
-@doc Docs.functionsummary(hartreefock) hartreefock
 
 function Base.size(hf::HartreeFockIterator)
     hf.A, size(hf.system)

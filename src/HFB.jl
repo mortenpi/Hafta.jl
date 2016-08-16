@@ -87,8 +87,6 @@ type HFBState{T <: ManyBodySystem}
         new(system,lambda,energies,rho,kappa,U,V)
     end
 end
-# TODO: this weird hack is necessary to append to the documentation of a type.
-@doc Docs.catdoc((@doc HFBState), Docs.typesummary(HFBState)) HFBState
 
 HFBState{T<:ManyBodySystem}(system::HFBSystem{T}, lambda, energies, U, V) = HFBState{T}(system, lambda, energies, U, V)
 HFBState{T<:ManyBodySystem}(system::T, lambda, energies, U, V) = HFBState{T}(HFBSystem(system), lambda, energies, U, V)
@@ -112,8 +110,6 @@ type HFBIterator{T <: ManyBodySystem}
     es::Vector{Float64}
     eigenvalues::Vector{Vector{Float64}}
 end
-# TODO: this weird hack is necessary to append to the documentation of a type.
-@doc Docs.catdoc((@doc HFBIterator), Docs.typesummary(HFBIterator)) HFBIterator
 
 import Base: length
 length(hfbi::HFBIterator) = length(hfbi.es)
@@ -149,7 +145,6 @@ function hfb(system, A; maxkappa=1)
 
     hfbi
 end
-@doc Docs.functionsummary(hfb) hfb
 
 
 """
