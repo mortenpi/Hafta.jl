@@ -10,6 +10,7 @@ before_install:
   -in docs/.documenter.enc -out docs/.documenter -d
 
 after_success:
+    - cat docs/.documenter
     - julia -e 'Pkg.add("Documenter")'
     - julia -e 'Pkg.checkout("Documenter")'
     - julia docs/make.jl
