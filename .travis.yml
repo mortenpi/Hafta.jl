@@ -8,9 +8,9 @@ julia:
 before_install:
 - openssl aes-256-cbc -K $encrypted_9f2e6bc1f0ed_key -iv $encrypted_9f2e6bc1f0ed_iv
   -in docs/.documenter.enc -out docs/.documenter -d
+- cat docs/.documenter
 
 after_success:
-    - cat docs/.documenter
     - julia -e 'Pkg.add("Documenter")'
     - julia -e 'Pkg.checkout("Documenter")'
     - julia docs/make.jl
