@@ -39,4 +39,9 @@ include("HFB.jl")
 using .HFB
 export hfb
 
+include("QRPA.jl")
+using .QRPA
+export QRPAOperator
+export arneigs
+
 end
