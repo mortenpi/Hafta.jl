@@ -37,9 +37,6 @@ function QRPAOperator{T}(state::HFBState{T})
     QRPAOperator{T}(state.system.system, M, E, state.U, state.V)
 end
 
-# TODO: this weird hack is necessary to append to the documentation of a type.
-@doc Docs.catdoc((@doc QRPAOperator), Docs.typesummary(QRPAOperator)) QRPAOperator
-
 import Base: size, issym, eltype, *
 function size(op::QRPAOperator)
     N = (op.M-1)*op.M
@@ -406,85 +403,6 @@ function arneigs(A;
     nev ≤ nconv || warn("not all wanted Ritz pairs converged. Requested: $nev, converged: $nconv")
 
     return output
-end
-
-
-# DEPRECATED
-"""
-The `BigQRPAOperator`.
-
-`M` is the size of the single particle basis. The QRPA operator therefore operatates
-on a `2M^2`-dimensional (complex) vector space.
-
-`E`, `U` and `V` are `MxM` matrices. `E` is a diagonal matrix with the HFB spectrum
-on the diagonal. `U` and `V` are the respective matrices from the Bogoliubov
-transformation.
-"""
-type BigQRPAOperator{T <: Hafta.ManyBodySystem}
-    system::T
-    M::Int
-    E::Diagonal{Float64}
-    U::Matrix{Float64}
-    V::Matrix{Float64}
-end
-# TODO: this weird hack is necessary to append to the documentation of a type.
-@doc Docs.catdoc((@doc BigQRPAOperator), Docs.typesummary(BigQRPAOperator)) BigQRPAOperator
-
-import Base: size, issym, eltype, *
-size(op::BigQRPAOperator) = 2op.M^2, 2op.M^2
-issym(op::BigQRPAOperator) = false
-eltype{T}(::Type{BigQRPAOperator{T}}) = Float64
-
-function _gamma(system, rho)
-    N = size(system)
-    gamma = zeros(Float64, (N,N))
-    for i=1:N,j=1:N,k=1:N,l=1:N
-        gamma[i,j] += rho[k,l]*( V(system, i,k,j,l)-V(system, i,k,l,j) )
-    end
-    gamma
-end
-
-function _delta(system, kappa)
-    N = size(system)
-    delta = zeros(Float64, (N,N))
-    for i=1:N,j=1:N,k=1:N,l=1:N
-        delta[i,j] += 0.5*kappa[k,l]*( V(system, i,j,k,l)-V(system, i,j,l,k) )
-    end
-    delta
-end
-
-"""This implements the action of the linear operator."""
-function *(op::BigQRPAOperator, zs::Vector)
-    M = op.M
-    E,U,V = op.E, op.U, op.V
-
-    X = reshape(zs[1:M^2], (M,M))
-    Y = reshape(zs[M^2+1:2M^2], (M,M))
-
-    rho = U*X*transpose(V) + conj(V)*Y*ctranspose(U)
-    #_kappa(X,Y) = U*X*transpose(U) + conj(V)*Y*ctranspose(V)
-    #kappa1 = _kappa(X,Y)
-    #kappa2 = ctranspose(_kappa(ctranspose(Y),ctranspose(X)))
-    kappa1 = U*X*transpose(U) + conj(V)*Y*ctranspose(V)
-    kappa2 = V*X*transpose(V) + conj(U)*Y*ctranspose(U)
-
-    gamma = _gamma(op.system, rho)
-    delta1 = _delta(op.system, kappa1)
-    delta2 = ctranspose(_delta(op.system, ctranspose(kappa2)))
-
-    _W1(Γ,Δ1,Δ2) = ctranspose(U)*Γ*conj(V) + ctranspose(U)*Δ1*conj(U) + ctranspose(V)*Δ2*conj(V) - ctranspose(V)*transpose(Γ)*conj(U)
-    _W2(Γ,Δ1,Δ2) =  transpose(V)*Γ*U       +  transpose(V)*Δ1*U       +  transpose(U)*Δ2*V       -  transpose(U)*transpose(Γ)*V
-    W1 = _W1(gamma,delta1,delta2)
-    W2 = _W2(gamma,delta1,delta2)
-    #W2 = _W(gamma',delta2',delta1')'
-
-    Xn = E*X + X*E + W1
-    Yn = -(E*Y + Y*E + W2)
-    #Yn = E*Y + Y*E + W2
-
-    Z1 = reshape(Xn, M^2)
-    Z2 = reshape(Yn, M^2)
-    vcat(Z1,Z2)
 end
 
 end # module
