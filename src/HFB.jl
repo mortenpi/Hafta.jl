@@ -8,6 +8,7 @@ import Hafta: ManyBodySystem
 import Hafta.Utils: find_value
 
 export hfb
+export particle_number
 
 """
 `HFBSystem{T}` is a wrapper around a `ManyBodySystem`.
@@ -93,7 +94,7 @@ HFBState{T<:ManyBodySystem}(system::T, lambda, energies, U, V) = HFBState{T}(HFB
 
 import Base: size
 size(state::HFBState) = size(state.system)
-
+particle_number(s::HFBState) = trace(s.rho)
 
 """
 The `HFBIterator` is what stores the state of the iteration.
