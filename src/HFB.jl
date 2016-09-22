@@ -78,7 +78,7 @@ type HFBState{T <: ManyBodySystem}
     V::Matrix{Float64}
 
     """Constructs a `HFBState` from the `U` and `V` matrices."""
-    function HFBState(system::HFBSystem{T}, lambda::Float64, energies::Vector{Float64}, U::Matrix{Float64}, V::Matrix{Float64})
+    function HFBState(system::HFBSystem{T}, lambda::Number, energies::Vector{Float64}, U::Matrix{Float64}, V::Matrix{Float64})
         M = length(system)
         @assert (M,M) == size(U) && (M,M) == size(V)
 
