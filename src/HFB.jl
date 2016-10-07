@@ -102,6 +102,8 @@ type HFBState{T <: ManyBodySystem}
     end
 end
 
+HFBState{T<:ManyBodySystem}(system::HFBSystem{T}, lambda, gamma, delta, energies, U, V) = HFBState{T}(system, lambda, gamma, delta, energies, U, V)
+HFBState{T<:ManyBodySystem}(system::T, lambda, gamma, delta, energies, U, V) = HFBState{T}(HFBSystem(system), lambda, gamma, delta, energies, U, V)
 HFBState{T<:ManyBodySystem}(system::HFBSystem{T}, lambda, energies, U, V) = HFBState{T}(system, lambda, energies, U, V)
 HFBState{T<:ManyBodySystem}(system::T, lambda, energies, U, V) = HFBState{T}(HFBSystem(system), lambda, energies, U, V)
 
