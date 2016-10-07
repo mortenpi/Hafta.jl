@@ -69,10 +69,6 @@ type HFBState{T <: ManyBodySystem}
     lambda::Float64
     energies::Vector{Float64}
 
-    # potentials
-    gamma::Matrix{Float64}
-    delta::Matrix{Float64}
-
     # Intermediate objects constructed from the transformations
     rho::Matrix{Float64}
     kappa::Matrix{Float64}
@@ -82,28 +78,17 @@ type HFBState{T <: ManyBodySystem}
     V::Matrix{Float64}
 
     """Constructs a `HFBState` from the `U` and `V` matrices."""
-    function HFBState(system::HFBSystem{T}, lambda, gamma, delta, energies, U, V)
+    function HFBState(system::HFBSystem{T}, lambda::Number, energies::Vector{Float64}, U::Matrix{Float64}, V::Matrix{Float64})
         M = length(system)
         @assert (M,M) == size(U) && (M,M) == size(V)
-        @assert (M,M) == size(gamma) && (M,M) == size(delta)
-        rho = conj(V)*transpose(V)
-        kappa = -U*ctranspose(V)
-        new(system, lambda, energies, gamma, delta, rho, kappa, U, V)
-    end
 
-    """Constructs a `HFBState` from the `U` and `V` matrices."""
-    function HFBState(system::HFBSystem{T}, lambda, energies, U, V)
-        M = length(system)
-        @assert (M,M) == size(U) && (M,M) == size(V)
-        rho = conj(V)*transpose(V)
-        kappa = -U*ctranspose(V)
-        gamma, delta = gamma_delta(system, rho, kappa)
-        new(system, lambda, energies, gamma, delta, rho, kappa, U, V)
+        VT = transpose(V)
+        rho = V*VT
+        kappa = -U*VT
+        new(system,lambda,energies,rho,kappa,U,V)
     end
 end
 
-HFBState{T<:ManyBodySystem}(system::HFBSystem{T}, lambda, gamma, delta, energies, U, V) = HFBState{T}(system, lambda, gamma, delta, energies, U, V)
-HFBState{T<:ManyBodySystem}(system::T, lambda, gamma, delta, energies, U, V) = HFBState{T}(HFBSystem(system), lambda, gamma, delta, energies, U, V)
 HFBState{T<:ManyBodySystem}(system::HFBSystem{T}, lambda, energies, U, V) = HFBState{T}(system, lambda, energies, U, V)
 HFBState{T<:ManyBodySystem}(system::T, lambda, energies, U, V) = HFBState{T}(HFBSystem(system), lambda, energies, U, V)
 
@@ -185,7 +170,7 @@ gamma_delta(state::HFBState) = gamma_delta(state.system, state.rho, state.kappa)
 import Hafta: energy
 function energy(state::HFBState)
     N = length(state.system)
-    gamma, delta = state.gamma, state.delta
+    gamma,delta = gamma_delta(state)
 
     T = zeros(Float64, (N,N))
     for i=1:N, j=1:N
@@ -195,7 +180,7 @@ function energy(state::HFBState)
     Ef = trace(T*state.rho)
     Ei = 0.5*trace(gamma*state.rho)
     Ep = -0.5*trace(delta*state.kappa)
-
+    #trace( T*state.rho + 0.5*gamma*state.rho - 0.5*delta*state.kappa )
     Ef+Ei+Ep, Ef, Ei, Ep
 end
 
@@ -239,7 +224,7 @@ is a monotonically increasing function of lambda.
 function iterate_lambda(system::HFBSystem,rho,kappa,A; lambdaepsilon=1e-12, nepsilon=lambdaepsilon, maxiters=100, verbose=false)
     if verbose @show lambdaepsilon nepsilon end
     M = length(system)
-    gamma, delta = gamma_delta(system, rho, kappa)
+    gamma,delta = gamma_delta(system, rho, kappa)
 
     function f(λ)
         _,n = solve_state(system,system.Tij,gamma,delta,λ)
