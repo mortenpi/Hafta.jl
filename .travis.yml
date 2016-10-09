@@ -4,6 +4,9 @@ language: julia
 git:
   depth: 99999
 
+before_install:
+  - echo $private_key
+
 julia:
   - 0.4
   - 0.5
