@@ -5,7 +5,7 @@ git:
   depth: 99999
 
 before_install:
-  - echo "$private_key"
+  - echo "$DOCUMENTER_DEPLOY_KEY"
 
 julia:
   - 0.4
