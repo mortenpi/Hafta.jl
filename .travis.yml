@@ -7,7 +7,7 @@ git:
 before_install:
   - echo "$DOCUMENTER_DEPLOY_KEY"
 
-after_install:
+before_script:
   - julia envshow.jl
 
 julia:
