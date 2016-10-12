@@ -4,7 +4,7 @@ using Gadfly
 using Formatting
 
 using Hafta
-import Hafta: ManyBodySystem
+import Hafta: ManyBodySystem, energy, spin, parity
 import Hafta.Utils: find_value
 
 export hfb
@@ -49,6 +49,10 @@ import Base: length
 H0(s::HFBSystem, i, j) = H0(s.system, i,j)
 V(s::HFBSystem, i, j, k, l) = V(s.system, i,j,k,l)
 length(s::HFBSystem) = length(s.system) # TODO: should it be "static" as well?
+
+spin(s::HFBSystem, i) = spin(s.system, i)
+parity(s::HFBSystem, i) = parity(s.system, i)
+energy(s::HFBSystem, i) = energy(s.system, i)
 
 Vbar(s::HFBSystem, i,j,k,l) = V(s.system, i,j,k,l) - V(s.system, i,j,l,k)
 

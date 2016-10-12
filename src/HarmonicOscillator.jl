@@ -12,6 +12,7 @@ import Base.length
 import Base.getindex
 
 export Psi
+export Psi_parity
 export WMatrix
 export generate_wmatrix
 
@@ -70,6 +71,9 @@ function Psi(n::Integer, x0::AbstractFloat=1.0)
         C*Polynomials.polyval(p,q).*exp(-(q.^2)/2)
     end
 end
+
+# Determines the parity of the i-th basis function
+Psi_parity(i) = iseven(i) ? 1 : -1
 
 # ===================================================================
 # The 1-dimensional W matrix

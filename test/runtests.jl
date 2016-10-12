@@ -13,3 +13,9 @@ import Hafta
 # See the comment and TOOD at the function definition.
 #@test ! Hafta.HarmonicOscillator.empty_expression( :(x) )
 #@test ! Hafta.HarmonicOscillator.empty_expression( :(5) )
+
+# TODO: the basis function definitions should be switched to types probably.
+# Then we'd be storing the polynomial as well and we could check parity with
+# that.
+for i in 0:2:100 @test Hafta.HarmonicOscillator.Psi_parity(i) === 1 end
+for i in 1:2:101 @test Hafta.HarmonicOscillator.Psi_parity(i) === -1 end

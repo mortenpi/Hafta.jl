@@ -18,8 +18,15 @@ abstract ManyBodySystem
 function H0 end; export H0
 function V end; export V
 
-# Methods of the iterative solvers
+# Functions to calculate observables
+# Two possible signatures currently envisioned:
+#   - f(::State) -> expectation value for the state
+#   - f(::System, i) -> expectation value for the i-th basis state
 function energy end; export energy
+function spin end; export spin
+function parity end; export parity
+
+# Functions of the iterative solvers
 function iterate! end; export iterate!
 function solve! end; export solve!
 

@@ -2,8 +2,10 @@
 module HarmonicSystems
 
 using Hafta
-import Hafta: H0, V
-HarmonicOscillator = Hafta.HarmonicOscillator
+import Hafta: H0, V, energy, spin, parity
+
+import Hafta: HarmonicOscillator
+import Hafta.HarmonicOscillator: Psi_parity
 
 import Base: size, length, getindex
 
@@ -60,6 +62,10 @@ function V(s::Harmonic1DFermionSystem, i, j, k, l)
         0.0
     end
 end
+
+spin(::Harmonic1DFermionSystem, i) = (i%2 == 0) ? -.5 : .5
+parity(::Harmonic1DFermionSystem, i) = Psi_parity(div(i-1, 2))
+energy(::Harmonic1DFermionSystem, i) = float(div(i-1,2))+0.5
 
 
 # ===================================================================
@@ -155,5 +161,9 @@ end
 function V(s::Harmonic2DSystem, i, j, k, l)
     s.vcoef*_V(s.basis,i,j,k,l)
 end
+
+spin(system::Harmonic2DSystem, i) = system.basis[i].s ? -.5 : .5
+parity(system::Harmonic2DSystem, i) = Psi_parity(div(system.basis[i].nx-1, 2)) * Psi_parity(div(system.basis[i].ny-1, 2)) # TODO: does this make sense?
+energy(system::Harmonic2DSystem, i) = float(system.basis[i].nx + system.basis[i].ny)+0.5
 
 end
