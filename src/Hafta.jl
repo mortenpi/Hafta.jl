@@ -26,6 +26,9 @@ function energy end; export energy
 function spin end; export spin
 function parity end; export parity
 
+# Observables for only many-body states
+function particle_number end; export particle_number
+
 # Functions of the iterative solvers
 function iterate! end; export iterate!
 function solve! end; export solve!

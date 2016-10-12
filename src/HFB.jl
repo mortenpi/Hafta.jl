@@ -4,11 +4,10 @@ using Gadfly
 using Formatting
 
 using Hafta
-import Hafta: ManyBodySystem, energy, spin, parity
+import Hafta: ManyBodySystem, energy, spin, parity, particle_number
 import Hafta.Utils: find_value
 
 export hfb
-export particle_number
 
 """
 `HFBSystem{T}` is a wrapper around a `ManyBodySystem`.
