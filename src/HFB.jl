@@ -224,10 +224,11 @@ solve_state(system,N,lambda,T,gamma,delta) = solve_state(system,T,gamma,delta,la
 The underlying assumption is that the particle number of the HFB solution
 is a monotonically increasing function of lambda.
 """
-function iterate_lambda(system::HFBSystem,rho,kappa,A; lambdaepsilon=1e-12, nepsilon=lambdaepsilon, maxiters=100, verbose=false)
+function iterate_lambda(system::HFBSystem,rho,kappa,A; lambdaepsilon=1e-12, nepsilon=lambdaepsilon, maxiters=100, verbose=false, delta_factor=1.0)
     if verbose @show lambdaepsilon nepsilon end
     M = length(system)
-    gamma,delta = gamma_delta(system, rho, kappa)
+    gamma, delta = gamma_delta(system, rho, kappa)
+    delta *= delta_factor
 
     function f(λ)
         _,n = solve_state(system,system.Tij,gamma,delta,λ)
@@ -243,7 +244,7 @@ function iterate_lambda(system::HFBSystem,rho,kappa,A; lambdaepsilon=1e-12, neps
 end
 
 import Hafta: iterate!
-function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, lambdaepsilon=nepsilon/1e3, verbose=false)
+function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, lambdaepsilon=nepsilon/1e3, verbose=false, kwargs...)
     lambdaepsilon = min(nepsilon, lambdaepsilon)
 
     if !(0.0 <= mixing < 1.0)
@@ -268,7 +269,7 @@ function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, l
         state.rho, state.kappa
     end
 
-    nextstate = iterate_lambda(hfbi.system,rho,kappa,A; lambdaepsilon=lambdaepsilon,nepsilon=nepsilon,maxiters=maxiters,verbose=verbose)
+    nextstate = iterate_lambda(hfbi.system,rho,kappa,A; lambdaepsilon=lambdaepsilon,nepsilon=nepsilon,maxiters=maxiters,verbose=verbose, kwargs...)
 
     E,_ = energy(nextstate)
     push!(hfbi.states, nextstate)
@@ -288,11 +289,11 @@ function issolved(hfbi::HFBIterator, epsilon)
 end
 
 import Hafta: solve!
-function solve!(hfbi::HFBIterator; epsilon=1e-10, maxiters=20, lambdaiters=50, args...)
+function solve!(hfbi::HFBIterator; epsilon=1e-10, maxiters=20, lambdaiters=50, kwargs...)
     #args = Dict{Symbol, Any}(args)
     efact = nothing
     while !issolved(hfbi, epsilon)
-        iterate!(hfbi; maxiters=lambdaiters, nepsilon=epsilon/10, args...)
+        iterate!(hfbi; maxiters=lambdaiters, nepsilon=epsilon/10, kwargs...)
 
         maxiters -= 1
         if maxiters == 0
