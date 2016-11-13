@@ -224,11 +224,8 @@ solve_state(system,N,lambda,T,gamma,delta) = solve_state(system,T,gamma,delta,la
 The underlying assumption is that the particle number of the HFB solution
 is a monotonically increasing function of lambda.
 """
-function iterate_lambda(system::HFBSystem,rho,kappa,A; lambdaepsilon=1e-12, nepsilon=lambdaepsilon, maxiters=100, verbose=false, delta_factor=1.0)
+function iterate_lambda(system::HFBSystem, A, gamma, delta; lambdaepsilon=1e-12, nepsilon=lambdaepsilon, maxiters=100, verbose=false)
     if verbose @show lambdaepsilon nepsilon end
-    M = length(system)
-    gamma, delta = gamma_delta(system, rho, kappa)
-    delta *= delta_factor
 
     function f(λ)
         _,n = solve_state(system,system.Tij,gamma,delta,λ)
@@ -244,7 +241,7 @@ function iterate_lambda(system::HFBSystem,rho,kappa,A; lambdaepsilon=1e-12, neps
 end
 
 import Hafta: iterate!
-function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, lambdaepsilon=nepsilon/1e3, verbose=false, kwargs...)
+function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, lambdaepsilon=nepsilon/1e3, verbose=false, delta_factor=1.0, kwargs...)
     lambdaepsilon = min(nepsilon, lambdaepsilon)
 
     if !(0.0 <= mixing < 1.0)
@@ -269,7 +266,9 @@ function iterate!(hfbi::HFBIterator; mixing=0.0, maxiters=100, nepsilon=1e-10, l
         state.rho, state.kappa
     end
 
-    nextstate = iterate_lambda(hfbi.system,rho,kappa,A; lambdaepsilon=lambdaepsilon,nepsilon=nepsilon,maxiters=maxiters,verbose=verbose, kwargs...)
+    gamma, delta = gamma_delta(hfbi.system, rho, kappa)
+    delta *= delta_factor
+    nextstate = iterate_lambda(hfbi.system, A, gamma, delta; lambdaepsilon=lambdaepsilon,nepsilon=nepsilon,maxiters=maxiters,verbose=verbose, kwargs...)
 
     E,_ = energy(nextstate)
     push!(hfbi.states, nextstate)
