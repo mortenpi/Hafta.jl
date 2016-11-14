@@ -2,7 +2,7 @@ using Documenter, Hafta
 
 makedocs(
     modules = [Hafta],
-    format  = Documenter.Formats.HTML,
+    format  = :html,
     sitename = "Hafta.jl",
     pages = [
         "Introduction" => "index.md",
