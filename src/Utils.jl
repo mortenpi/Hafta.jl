@@ -22,7 +22,7 @@ function find_value(f::Function, y0::Number; xeps=1e-10, yeps=xeps, maxiters=100
     converged,xmin,xmid,xmax = _fv_binary(xmin,xmax, f,y0,xeps,yeps,maxiters,verbose)
     if verbose println("[find_value: binary] xmin=$xmin, xmid=$xmid, xmax=$xmax ($(converged?"CONVERGED":"NOT CONVERGED"))") end
     xmin,xmax = if converged
-        xmin,xmax
+        xmid, xmid
     else
         xmin = _fv_binary_lower(xmin,xmid, f,y0,xeps,yeps,maxiters,verbose)
         xmax = _fv_binary_upper(xmid,xmax, f,y0,xeps,yeps,maxiters,verbose)
