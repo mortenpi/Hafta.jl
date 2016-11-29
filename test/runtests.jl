@@ -35,6 +35,7 @@ end
         for i in 1:length(s)
             @test Hafta.H0(s, i, i) === div(i-1, 2) + 0.5
         end
+        @test Hafta.HarmonicSystems.nshells(s) === 3
     end
 end
 

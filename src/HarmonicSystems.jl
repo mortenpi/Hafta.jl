@@ -12,6 +12,10 @@ import Base: size, length, getindex
 export Harmonic1DFermionSystem
 export Harmonic2DSystem
 
+"""
+Number of energy shells in a basis.
+"""
+function nshells end
 
 # ===================================================================
 # The 1D harmonic oscillator
@@ -42,6 +46,8 @@ end
 function Base.length(s::Harmonic1DFermionSystem)
     2*s.shells
 end
+
+nshells(s::Harmonic1DFermionSystem) = s.shells
 
 function H0(s::Harmonic1DFermionSystem, i, j)
     if i==j
@@ -148,6 +154,8 @@ end
 function Base.length(s::Harmonic2DSystem)
     length(s.basis)
 end
+
+nshells(s::Harmonic2DSystem) = s.basis.shells
 
 function H0(s::Harmonic2DSystem, i, j)
     if i==j
