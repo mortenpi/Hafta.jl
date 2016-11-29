@@ -27,3 +27,17 @@ import Hafta
     for i in 0:2:100 @test Hafta.HarmonicOscillator.Psi_parity(i) === 1 end
     for i in 1:2:101 @test Hafta.HarmonicOscillator.Psi_parity(i) === -1 end
 end
+
+@testset "HarmonicSystems" begin
+    let s = Hafta.Harmonic1DFermionSystem(3, -1.0)
+        @test length(s) === 6
+        @test s.vcoef === -1.0
+        for i in 1:length(s)
+            @test Hafta.H0(s, i, i) === div(i-1, 2) + 0.5
+        end
+    end
+end
+
+@testset "HartreeFock" begin end
+
+@testset "HFB" begin end
