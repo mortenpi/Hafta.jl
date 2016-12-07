@@ -41,4 +41,36 @@ end
 
 @testset "HartreeFock" begin end
 
-@testset "HFB" begin end
+@testset "HFB" begin
+    # The HFB module uses more optimized routines now to calculate the Vbar and
+    # Γ and Δ fields. This compares them to the older and slower routines. 
+    Vbar_simple(s::Hafta.HFB.HFBSystem, i,j,k,l) = Hafta.V(s.system, i,j,k,l) - Hafta.V(s.system, i,j,l,k)
+
+    s = Hafta.HFB.HFBSystem(Hafta.Harmonic2DSystem(3, -1.0))
+    @test Hafta.HFB.Vbar(s, 1,1,1,1) == Vbar_simple(s, 1,1,1,1)
+    @test Hafta.HFB.Vbar(s, 1,2,1,2) == Vbar_simple(s, 1,2,1,2)
+    @test Hafta.HFB.Vbar(s, 1,2,2,1) == Vbar_simple(s, 1,2,2,1)
+
+    function gamma_delta_slow(system::Hafta.HFB.HFBSystem, rho::Matrix, kappa::Matrix)
+        M = length(system)
+        gamma = zeros(Float64, (M,M))
+        delta = zeros(Float64, (M,M))
+        for i=1:M,j=1:M,k=1:M,l=1:M
+            gamma[i,j] += rho[k,l] * Vbar_simple(system, i,k,j,l)
+            delta[i,j] += 0.5*kappa[k,l] * Vbar_simple(system, i,j,k,l)
+        end
+        gamma,delta
+    end
+
+    function are_ΓΔ_equal(ΓΔ1, ΓΔ2)
+        Γ1, Δ1 = ΓΔ1
+        Γ2, Δ2 = ΓΔ2
+        Γ1 ≈ Γ2 && Δ1 ≈ Δ2
+    end
+
+    let M = length(s), rho = rand(Float64, (M,M)), kappa = rand(Float64, (M,M))
+        ΓΔ_slow = @time gamma_delta_slow(s, rho, kappa)
+        ΓΔ = @time Hafta.HFB.gamma_delta(s, rho, kappa)
+        @test are_ΓΔ_equal(ΓΔ_slow, ΓΔ)
+    end
+end

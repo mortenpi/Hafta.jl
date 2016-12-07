@@ -31,6 +31,7 @@ for HFB simpler.
 type HFBSystem{T <: ManyBodySystem}
     system::T
     Tij::Matrix{Float64}
+    Vbar_ijkl::Array{Float64,4}
 
     function HFBSystem(s::T)
         M = length(s)
@@ -38,7 +39,14 @@ type HFBSystem{T <: ManyBodySystem}
         for i=1:M, j=1:M
             Tij[i,j] = H0(s, i,j)
         end
-        new(s,Tij)
+
+        M > 132 && error("Single particle basis too large to store V (mem lim ~ 3 GiB)")
+        Vbar = zeros(Float64, (M,M,M,M))
+        for i=1:M, j=1:M, k=1:M, l=1:M
+            Vbar[i,j,k,l] = V(s,i,j,k,l) - V(s,i,j,l,k)
+        end
+
+        new(s, Tij, Vbar)
     end
 end
 HFBSystem{T}(s::T) = HFBSystem{T}(s)
@@ -53,7 +61,7 @@ spin(s::HFBSystem, i) = spin(s.system, i)
 parity(s::HFBSystem, i) = parity(s.system, i)
 energy(s::HFBSystem, i) = energy(s.system, i)
 
-Vbar(s::HFBSystem, i,j,k,l) = V(s.system, i,j,k,l) - V(s.system, i,j,l,k)
+Vbar(s::HFBSystem, i,j,k,l) = s.Vbar_ijkl[i,j,k,l]
 
 """
 `HFBState` stores a Bogoliubov transformation.
@@ -150,7 +158,6 @@ function hfb(system, A; maxkappa=1)
     hfbi
 end
 
-
 """
 `gamma_delta(system, rho, kappa)` calculates the `gamma` and `delta`
 matrices from the `rho` and `kappa`. It also needs a system, since
@@ -160,9 +167,15 @@ function gamma_delta(system::HFBSystem, rho::Matrix, kappa::Matrix)
     M = length(system)
     gamma = zeros(Float64, (M,M))
     delta = zeros(Float64, (M,M))
-    for i=1:M,j=1:M,k=1:M,l=1:M
-        gamma[i,j] += rho[k,l] * Vbar(system, i,k,j,l)
-        delta[i,j] += 0.5*kappa[k,l] * Vbar(system, i,j,k,l)
+    for i=1:M, j=i+1:M, k=1:M, l=k+1:M
+        vbar_lkji = Vbar(system, l,k,j,i)
+        gamma[l,j] += rho[k,i] * vbar_lkji
+        gamma[k,j] -= rho[l,i] * vbar_lkji
+        gamma[l,i] -= rho[k,j] * vbar_lkji
+        gamma[k,i] += rho[l,j] * vbar_lkji
+        delta_kappa = kappa[i,j] - kappa[j,i]
+        delta[k,l] += 0.5*delta_kappa * vbar_lkji
+        delta[l,k] -= 0.5*delta_kappa * vbar_lkji
     end
     gamma,delta
 end
