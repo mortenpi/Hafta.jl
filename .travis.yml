@@ -5,7 +5,8 @@ git:
   depth: 99999
 
 julia:
-  - 0.4
+  - 0.6
+  - nightly
 
 after_success:
     - julia -e 'Pkg.add("Documenter")'
