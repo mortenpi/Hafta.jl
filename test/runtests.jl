@@ -74,3 +74,5 @@ end
         @test are_ΓΔ_equal(ΓΔ_slow, ΓΔ)
     end
 end
+
+include("qrpa.jl")
