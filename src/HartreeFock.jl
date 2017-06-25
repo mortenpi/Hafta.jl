@@ -13,7 +13,7 @@ The `HartreeFockIterator` is what stores the state of the iteration.
 A `HartreeFockIterator` object is the basis, which then can be iterated to solve
 the equations. The object should be constructed with `HartreeFock.hartreefock`.
 """
-type HartreeFockIterator{T <: Hafta.ManyBodySystem}
+mutable struct HartreeFockIterator{T <: Hafta.ManyBodySystem}
     # setup
     system::T
     A::Int64

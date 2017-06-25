@@ -1,6 +1,7 @@
 julia 0.6
 Combinatorics
 Polynomials
+QuadGK
 
 # The Orthopolys packages is not in the package repo.
 # Hence there should be the following in `deps/build.jl`

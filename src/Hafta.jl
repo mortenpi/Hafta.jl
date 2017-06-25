@@ -1,6 +1,6 @@
 module Hafta
 
-abstract QuantumBasis
+abstract type QuantumBasis end
 
 """
 A `ManyBodySystem` is the abstract type that defines an pairwise interacting
@@ -14,7 +14,7 @@ Additionally, the following methods are deprecated.
 
   - `Base.size(s::T) -> Int`
 """
-abstract ManyBodySystem
+abstract type ManyBodySystem end
 function H0 end; export H0
 function V end; export V
 

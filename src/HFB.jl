@@ -25,12 +25,12 @@ An additional method provided is the `Vbar(::HFBSystem, i,j,k,l)`,
 which is the antisymmetrized version of `V`, which makes expressions
 for HFB simpler.
 """
-type HFBSystem{T <: ManyBodySystem}
+mutable struct HFBSystem{T <: ManyBodySystem}
     system::T
     Tij::Matrix{Float64}
     Vbar_ijkl::Array{Float64,4}
 
-    function HFBSystem(s::T)
+    function HFBSystem{T}(s::T) where T <: ManyBodySystem
         M = length(s)
         Tij = zeros(Float64, (M,M))
         for i=1:M, j=1:M
@@ -71,7 +71,7 @@ only for debugging purposes.
 Sometimes it might be that the the `rho`/`kappa` are defined directly, and then
 `U`/`V` will be undefined.
 """
-type HFBState{T <: ManyBodySystem}
+mutable struct HFBState{T <: ManyBodySystem}
     # The many body system related to this state
     system::HFBSystem{T}
     lambda::Float64
@@ -86,7 +86,7 @@ type HFBState{T <: ManyBodySystem}
     V::Matrix{Float64}
 
     """Constructs a `HFBState` from the `U` and `V` matrices."""
-    function HFBState(system::HFBSystem{T}, lambda::Number, energies::Vector{Float64}, U::Matrix{Float64}, V::Matrix{Float64})
+    function HFBState{T}(system::HFBSystem{T}, lambda::Number, energies::Vector{Float64}, U::Matrix{Float64}, V::Matrix{Float64}) where T <: ManyBodySystem
         M = length(system)
         @assert (M,M) == size(U) && (M,M) == size(V)
 
@@ -110,7 +110,7 @@ The `HFBIterator` is what stores the state of the iteration.
 A `HFBIterator` object is the basis, which then can be iterated to solve
 the equations. The object should be constructed with `HFB.hfb`.
 """
-type HFBIterator{T <: ManyBodySystem}
+mutable struct HFBIterator{T <: ManyBodySystem}
     # setup
     system::HFBSystem{T}
     A::Int64
@@ -207,7 +207,7 @@ function solve_state(system,T,gamma,delta,lambda)
     equation[M+1:2M, 1:M] = -delta
 
     if !ishermitian(equation)
-        maxdiff = maximum(abs(equation-transpose(equation)))
+        maxdiff = maximum(abs.(equation-transpose(equation)))
         if maxdiff > 1e-14
             warn("Equation not hermitian (|diff| = $maxdiff)")
         end
@@ -238,7 +238,7 @@ function iterate_lambda(system::HFBSystem, A, gamma, delta; lambdaepsilon=1e-12,
     if verbose @show lambdaepsilon nepsilon end
 
     function f(λ)
-        _,n = solve_state(system,system.Tij,gamma,delta,λ)
+        s, n = solve_state(system,system.Tij,gamma,delta,λ)
         n
     end
 
@@ -246,8 +246,7 @@ function iterate_lambda(system::HFBSystem, A, gamma, delta; lambdaepsilon=1e-12,
 
     # for the choice of lambda see:
     #   https://lund.mortenpi.eu/hafta/2016/02/17/hfb-lambda-fix.html
-    nextstate,_ = solve_state(system,system.Tij,gamma,delta,0.5*(λmin+λmax))
-    nextstate
+    first(solve_state(system,system.Tij,gamma,delta,0.5*(λmin+λmax)))
 end
 
 import Hafta: iterate!
@@ -293,7 +292,7 @@ function issolved(hfbi::HFBIterator, epsilon)
     if length(hfbi.es) < mindeltas+1
         false
     else
-        maximum(abs(diff(hfbi.es[end-mindeltas:end]))) < epsilon
+        maximum(abs.(diff(hfbi.es[end-mindeltas:end]))) < epsilon
     end
 end
 

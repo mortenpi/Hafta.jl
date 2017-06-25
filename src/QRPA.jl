@@ -17,7 +17,7 @@ independent components.
 on the diagonal. `U` and `V` are the respective matrices from the Bogoliubov
 transformation.
 """
-type QRPAOperator{T <: Hafta.ManyBodySystem}
+mutable struct QRPAOperator{T <: Hafta.ManyBodySystem}
     system::T
     M::Int
     E::Diagonal{Float64}
@@ -87,8 +87,8 @@ It tries to cancel out any numeric instabilities or biases
 by summing the upper and lower components together.
 """
 function antisymmetric_pack{T}(Z::Matrix{T})
-    M,_ = size(Z)
-    @assert _ == M
+    M, N = size(Z)
+    @assert N == N
     @assert maximum(abs(Z + transpose(Z))) < 1e-10
     Mz = div(M*(M-1),2)
 
@@ -144,12 +144,12 @@ end
 """
 `QRPASolution` stores a particular solution found by the QRPA routine.
 """
-type QRPASolution{T}
+mutable struct QRPASolution{T}
     hfb::HFBState{T}
     energy::Complex128
     X::Matrix{Complex128}
     Y::Matrix{Complex128}
-    function QRPASolution(hfb::HFBState{T}, e, zs::Vector)
+    function QRPASolution{T}(hfb::HFBState{T}, e, zs::Vector) where T
         Mz = div(length(zs),2)
         M = round(Int, (1 + sqrt(1+8*Mz))/2)
         @assert Mz == div(M*(M-1),2)

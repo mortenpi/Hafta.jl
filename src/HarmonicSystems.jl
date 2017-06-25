@@ -27,7 +27,7 @@ oscillator with a delta-interaction.
 
 The constructor is `Harmonic1DFermionSystem(N,vcoef)`.
 """
-type Harmonic1DFermionSystem <: Hafta.ManyBodySystem
+mutable struct Harmonic1DFermionSystem <: Hafta.ManyBodySystem
     shells::Int
     wmatrix::Hafta.HarmonicOscillator.WMatrix
     vcoef::Float64
@@ -81,13 +81,13 @@ energy(::Harmonic1DFermionSystem, i) = float(div(i-1,2))+0.5
 # Number of basis functions for N shells
 basis_size(N::Integer) = N*(N+1)
 
-type BasisIdentifier
+mutable struct BasisIdentifier
     nx::UInt16
     ny::UInt16
     s::Bool
 end
 
-type HarmonicBasis
+mutable struct HarmonicBasis
     shells::Int64
     basislookup::Array{BasisIdentifier,1}
     W::HarmonicOscillator.WMatrix
@@ -109,7 +109,7 @@ function harmonicbasis(N)
     # Generate the 2D hosc. basis with N shells
     W = HarmonicOscillator.generate_wmatrix(N)
 
-    basislookup = Array(BasisIdentifier, basis_size(N))
+    basislookup = Array{BasisIdentifier}(basis_size(N))
     idx = 1
     for shell=0:(N-1)
         for ny=0:shell
@@ -136,7 +136,7 @@ function _V(b::HarmonicBasis, i,j,k,l)
 end
 
 # Create the Hafta.ManyBodySystem type
-type Harmonic2DSystem <: Hafta.ManyBodySystem
+mutable struct Harmonic2DSystem <: Hafta.ManyBodySystem
     vcoef::Float64
     basis::HarmonicBasis
 

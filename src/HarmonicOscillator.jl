@@ -4,6 +4,7 @@ module HarmonicOscillator
 using Combinatorics # permutations() has moved to Combinatorics in 0.5
 import Polynomials
 import Orthopolys
+import QuadGK: quadgk
 
 import Base.start
 import Base.done
@@ -43,6 +44,8 @@ end
 
 # Calls the function f with sorted arguments.
 macro ordered_fcall(f, key...)
+    key = map(esc, key)
+    f = esc(f)
     ret::Expr = :()
     for p=permutations(key)
         check_expr = chainoperator(<=, p)
@@ -96,7 +99,7 @@ end
 # WMatrix stores the W matrix elements as single array.
 # We define the getindex method and do some index magic to actually
 # get the W: (i,j,k,l) -> W[idx(i,j,k,l)] mapping.
-type WMatrix
+mutable struct WMatrix
     values::Array{Float64, 1}
     errors::Array{Float64, 1}
 end
@@ -135,7 +138,7 @@ end
 
 # SortedWMatrixKeys is an helper iterator which generates the sorted keys
 # that the use when filling the WMatrix.
-type SortedWMatrixKeys
+mutable struct SortedWMatrixKeys
     N
 end
 
@@ -171,8 +174,8 @@ end
 # the one-dimensional delta interaction for the first `n` basis states.
 function generate_wmatrix(n::Integer)
     keys = SortedWMatrixKeys(n)
-    values = Array(Float64, length(keys))
-    errors = Array(Float64, length(keys))
+    values = Array{Float64}(length(keys))
+    errors = Array{Float64}(length(keys))
     for k in keys
         idx = wmatrix_arridx(k...)
         v,e = W(k...)
