@@ -44,12 +44,12 @@ function QRPAOperator{T}(state::HFBState{T})
     QRPAOperator{T}(state.system.system, M, E, state.U, state.V)
 end
 
-import Base: size, issym, eltype, *
+import Base: size, issymmetric, eltype, *
 function size(op::QRPAOperator)
     N = (op.M-1)*op.M
     N,N
 end
-issym(op::QRPAOperator) = false
+issymmetric(op::QRPAOperator) = false
 eltype{T}(::Type{QRPAOperator{T}}) = Float64
 
 function _gamma(system, rho)
@@ -99,17 +99,17 @@ components together.
 """
 function antisymmetric_pack{T}(Z::Matrix{T})
     M, N = size(Z)
-    @assert N == N
-    @assert maximum(abs(Z + transpose(Z))) < 1e-10
+    @assert M == N
+    @assert maximum(abs.(Z + transpose(Z))) < 1e-10
     Mz = div(M*(M-1),2)
 
     vZ = zeros(T, Mz)
     ptr = 1
     for i=1:M-1
         delta = M-i-1
-        vZ[ptr:ptr+delta] += transpose(Z[i,i+1:M])
-        vZ[ptr:ptr+delta] -= Z[i+1:M,i]
-        vZ[ptr:ptr+delta] *= 0.5
+        vZ[ptr:ptr+delta] .+= Z[i,i+1:M]
+        vZ[ptr:ptr+delta] .-= Z[i+1:M,i]
+        vZ[ptr:ptr+delta] .*= 0.5
         ptr += delta+1
     end
     vZ
@@ -118,16 +118,16 @@ end
 """
 $(SIGNATURES)
 
-This implements the action of the linear operator.
+This implements the action of the linear operator `y = A*x`.
 """
-function *(op::QRPAOperator, zs::Vector)
+function A_mul_B!{T<:AbstractFloat}(y::AbstractArray{T}, op::QRPAOperator, x::AbstractArray{T})
     M = op.M
     E,U,V = op.E, op.U, op.V
 
     Mz = div(M*(M-1),2)
 
-    X = antisymmetric_unpack(zs[1:Mz])
-    Y = antisymmetric_unpack(zs[Mz+1:2Mz])
+    X = antisymmetric_unpack(x[1:Mz])
+    Y = antisymmetric_unpack(x[Mz+1:2Mz])
 
     rho = U*X*transpose(V) + conj(V)*Y*ctranspose(U)
     #_kappa(X,Y) = U*X*transpose(U) + conj(V)*Y*ctranspose(V)
@@ -151,7 +151,7 @@ function *(op::QRPAOperator, zs::Vector)
 
     Z1 = antisymmetric_pack(Xn)
     Z2 = antisymmetric_pack(Yn)
-    vcat(Z1,Z2)
+    y .= vcat(Z1,Z2)
 end
 
 
@@ -175,7 +175,7 @@ mutable struct QRPASolution{T}
         @assert Mz == div(M*(M-1),2)
         X = antisymmetric_unpack(zs[1:Mz])
         Y = antisymmetric_unpack(zs[Mz+1:2Mz])
-        scaling = sqrt(abs(sum(abs(X).^2) - sum(abs(Y).^2)))
+        scaling = sqrt(abs(sum(abs.(X).^2) - sum(abs.(Y).^2)))
         new(hfb,e,X/scaling,Y/scaling)
     end
 end
@@ -285,7 +285,7 @@ end
 
 
 # Methods related to the Arnoli method for solving the eigenvalue problem
-import Base.LinAlg: ARPACK, BlasInt, chksquare
+import Base.LinAlg: ARPACK, BlasInt, checksquare
 """
 $(SIGNATURES)
 
@@ -296,15 +296,15 @@ function arneigs(A;
               tol=0.0, maxiter::Integer=300, sigma=nothing, v0::Vector=zeros(eltype(A),(0,)),
               ritzvec::Bool=true)
     B = I # we do not need the general case
-    n = chksquare(A)
+    n = checksquare(A)
 
     T = eltype(A)
     iscmplx = T <: Complex
     isgeneral = B !== I
-    sym = issym(A) && !iscmplx
+    sym = issymmetric(A) && issymmetric(B) && !iscmplx
     nevmax=sym ? n-1 : n-2
     if nevmax <= 0
-        throw(ArgumentError("Input matrix A is too small. Use eigfact instead."))
+        throw(ArgumentError("input matrix A is too small. Use eigfact instead."))
     end
     if nev > nevmax
         warn("Adjusting nev from $nev to $nevmax")
@@ -319,15 +319,12 @@ function arneigs(A;
         ncv = ncvmin
     end
     ncv = BlasInt(min(ncv, n))
-    if isgeneral && !isposdef(B)
-        throw(PosDefException(0))
-    end
     bmat = isgeneral ? "G" : "I"
     isshift = sigma !== nothing
 
     if isa(which,AbstractString)
         warn("Use symbols instead of strings for specifying which eigenvalues to compute")
-        which=symbol(which)
+        which=Symbol(which)
     end
     if (which != :LM && which != :SM && which != :LR && which != :SR &&
         which != :LI && which != :SI && which != :BE)
@@ -390,33 +387,33 @@ function arneigs(A;
     end
 
     # Refer to ex-*.doc files in ARPACK/DOCUMENTS for calling sequence
-    matvecA(x) = A * x
+    matvecA!(y, x) = A_mul_B!(y, A, x)
     if !isgeneral           # Standard problem
-        matvecB(x) = x
+        matvecB = x -> x
         if !isshift         #    Regular mode
             mode       = 1
-            solveSI(x) = x
+            solveSI = x->x
         else                #    Shift-invert mode
             mode       = 3
-            F = factorize(sigma==zero(T) ? A : A - UniformScaling(sigma))
-            solveSI(x) = F \ x
+            F = factorize(A - UniformScaling(sigma))
+            solveSI = x -> F \ x
         end
     else                    # Generalized eigenproblem
-        matvecB(x) = B * x
+        matvecB = x -> B * x
         if !isshift         #    Regular inverse mode
             mode       = 2
             F = factorize(B)
-            solveSI(x) = F \ x
+            solveSI = x -> F \ x
         else                #    Shift-invert mode
             mode       = 3
-            F = factorize(sigma==zero(T) ? A : A-sigma*B)
-            solveSI(x) = F \ x
+            F = factorize(A - sigma*B)
+            solveSI = x -> F \ x
         end
     end
 
     # Compute the Ritz values and Ritz vectors
     (resid, v, ldv, iparam, ipntr, workd, workl, lworkl, rwork, TOL) =
-       ARPACK.aupd_wrapper(T, matvecA, matvecB, solveSI, n, sym, iscmplx, bmat, nev, ncv, whichstr, tol, maxiter, mode, v0)
+       ARPACK.aupd_wrapper(T, matvecA!, matvecB, solveSI, n, sym, iscmplx, bmat, nev, ncv, whichstr, tol, maxiter, mode, v0)
 
     # Postprocessing to get eigenvalues and eigenvectors
     output = ARPACK.eupd_wrapper(T, n, sym, iscmplx, bmat, nev, whichstr, ritzvec, TOL,
