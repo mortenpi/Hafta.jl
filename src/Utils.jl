@@ -1,11 +1,14 @@
 module Utils
 
+using DocStringExtensions
+
 """
+$(SIGNATURES)
+
 `find_value` finds the range of `x` for which `f(x) = y0`.
 
-It assumes that the function is continuous and monotonically increasing.
-Under these constraints it guarantees (or at least tries to) that the value
-is between the limits.
+It assumes that the function is continuous and monotonically increasing. Under these
+constraints it guarantees (or at least tries to) that the value is between the limits.
 
 Keyword arguments:
 

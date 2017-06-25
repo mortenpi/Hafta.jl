@@ -7,13 +7,14 @@ makedocs(
     pages = [
         "Introduction" => "index.md",
         "api.md",
-    ]
+    ],
+    html_prettyurls = true,
 )
 
 deploydocs(
     repo = "github.com/mortenpi/Hafta.jl.git",
     target = "build",
-    julia = "0.5",
+    julia = "0.6",
     make = nothing,
     deps = nothing,
 )

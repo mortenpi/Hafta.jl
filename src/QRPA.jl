@@ -1,4 +1,7 @@
 module QRPA
+
+using DocStringExtensions
+
 using Hafta
 import Hafta.HFB: HFBState
 
@@ -6,7 +9,7 @@ export QRPAOperator
 export arneigs
 
 """
-The `QRPAOperator`.
+$(TYPEDEF)
 
 `M` is the size of the single particle basis. The QRPA operator therefore operatates
 on a `M(M-1)`-dimensional (complex) vector space.
@@ -16,6 +19,9 @@ independent components.
 `E`, `U` and `V` are `MxM` matrices. `E` is a diagonal matrix with the HFB spectrum
 on the diagonal. `U` and `V` are the respective matrices from the Bogoliubov
 transformation.
+
+# Fields
+$(FIELDS)
 """
 mutable struct QRPAOperator{T <: Hafta.ManyBodySystem}
     system::T
@@ -25,9 +31,10 @@ mutable struct QRPAOperator{T <: Hafta.ManyBodySystem}
     V::Matrix{Float64}
 end
 
+# TODO: $(SIGNATURES)
 """
-Constructs a QRPA operator from a `HFBState` and `LinAlg.Eigen` eigenvalue
-and eigenvector factorization.
+Constructs a QRPA operator from a `HFBState` and `LinAlg.Eigen` eigenvalue and eigenvector
+factorization.
 
 The `efact` is used to get the HFB eigenvalues for the `E` matrix.
 """
@@ -63,7 +70,10 @@ function _delta(system, kappa)
     delta
 end
 
-"""Unpacks a the vector `vZ` into an antisymmetric matrix."""
+# TODO: $(SIGNATURES)
+"""
+Unpacks a the vector `vZ` into an antisymmetric matrix.
+"""
 function antisymmetric_unpack{T}(vZ::Vector{T})
     Mz = length(vZ)
     M = round(Int, (1 + sqrt(1+8*Mz))/2)
@@ -80,11 +90,12 @@ function antisymmetric_unpack{T}(vZ::Vector{T})
     Z
 end
 
+# TODO: $(SIGNATURES)
 """
 Packs the antisymmetric matrix `Z` into a vector.
 
-It tries to cancel out any numeric instabilities or biases
-by summing the upper and lower components together.
+It tries to cancel out any numeric instabilities or biases by summing the upper and lower
+components together.
 """
 function antisymmetric_pack{T}(Z::Matrix{T})
     M, N = size(Z)
@@ -104,7 +115,11 @@ function antisymmetric_pack{T}(Z::Matrix{T})
     vZ
 end
 
-"""This implements the action of the linear operator."""
+"""
+$(SIGNATURES)
+
+This implements the action of the linear operator.
+"""
 function *(op::QRPAOperator, zs::Vector)
     M = op.M
     E,U,V = op.E, op.U, op.V
@@ -142,7 +157,12 @@ end
 
 # Storing QRPA solutions
 """
+$(TYPEDEF)
+
 `QRPASolution` stores a particular solution found by the QRPA routine.
+
+# Fields
+$(FIELDS)
 """
 mutable struct QRPASolution{T}
     hfb::HFBState{T}
@@ -198,7 +218,10 @@ function classify(s::QRPASolution)
 end
 
 # Some UGLY code to wrap the QRPA solving
-"""Solves the full QRPA problem."""
+# TODO: $(SIGNATURES)
+"""
+Solves the full QRPA problem.
+"""
 function get_qrpa_values{T}(::Type{T}, N,A,c; nev=6, verbose=false, maxiters=200)
     s = T(N,c)
     hfbi = hfb(s,A)
@@ -264,6 +287,8 @@ end
 # Methods related to the Arnoli method for solving the eigenvalue problem
 import Base.LinAlg: ARPACK, BlasInt, chksquare
 """
+$(SIGNATURES)
+
 This is a modified version of the `eigs` function from `Base.LinAlg`.
 """
 function arneigs(A;

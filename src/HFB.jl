@@ -1,5 +1,7 @@
 module HFB
 
+using DocStringExtensions
+
 using Hafta
 import Hafta: ManyBodySystem, energy, spin, parity, particle_number
 import Hafta.Utils: find_value
@@ -7,23 +9,26 @@ import Hafta.Utils: find_value
 export hfb
 
 """
+$(TYPEDEF)
+
 `HFBSystem{T}` is a wrapper around a `ManyBodySystem`.
 
-It provides some temporary variables useful for the HFB solver
-that are constructed from the systems `H0(i,j)` and `V(i,j,k,l)`
-functions.
+It provides some temporary variables useful for the HFB solver that are constructed from the
+systems `H0(i,j)` and `V(i,j,k,l)` functions.
 
 The fields are:
 
     - `system::T` -- the many body system related to this state
     - `Tij::Matrix{Float64}` -- a matrix form of the `H0(i,j)`
 
-The automatically provided methods are `H0`, `V` and `length`,
-and they just dispatch to the corresponding methods for the type `T`.
+The automatically provided methods are `H0`, `V` and `length`, and they just dispatch to the
+corresponding methods for the type `T`.
 
-An additional method provided is the `Vbar(::HFBSystem, i,j,k,l)`,
-which is the antisymmetrized version of `V`, which makes expressions
-for HFB simpler.
+An additional method provided is the `Vbar(::HFBSystem, i,j,k,l)`, which is the
+antisymmetrized version of `V`, which makes expressions for HFB simpler.
+
+# Fields
+$(FIELDS)
 """
 mutable struct HFBSystem{T <: ManyBodySystem}
     system::T
@@ -61,15 +66,19 @@ energy(s::HFBSystem, i) = energy(s.system, i)
 Vbar(s::HFBSystem, i,j,k,l) = s.Vbar_ijkl[i,j,k,l]
 
 """
+$(TYPEDEF)
+
 `HFBState` stores a Bogoliubov transformation.
 
-The transformation is defined by the `U` and `V` matrices. The object also stores
-the `rho` and `kappa` matrices that are calculated from the `U` and `V`.
-Calculations should use the `rho` and `kappa` directly and `U`/`V` are stored
-only for debugging purposes.
+The transformation is defined by the `U` and `V` matrices. The object also stores the `rho`
+and `kappa` matrices that are calculated from the `U` and `V`. Calculations should use the
+`rho` and `kappa` directly and `U`/`V` are stored only for debugging purposes.
 
-Sometimes it might be that the the `rho`/`kappa` are defined directly, and then
-`U`/`V` will be undefined.
+Sometimes it might be that the the `rho`/`kappa` are defined directly, and then `U`/`V` will
+be undefined.
+
+# Fields
+$(FIELDS)
 """
 mutable struct HFBState{T <: ManyBodySystem}
     # The many body system related to this state
@@ -105,10 +114,15 @@ size(state::HFBState) = size(state.system)
 particle_number(s::HFBState) = trace(s.rho)
 
 """
+$(TYPEDEF)
+
 The `HFBIterator` is what stores the state of the iteration.
 
-A `HFBIterator` object is the basis, which then can be iterated to solve
-the equations. The object should be constructed with `HFB.hfb`.
+A `HFBIterator` object is the basis, which then can be iterated to solve the equations. The
+object should be constructed with `HFB.hfb`.
+
+# Fields
+$(FIELDS)
 """
 mutable struct HFBIterator{T <: ManyBodySystem}
     # setup
@@ -125,7 +139,9 @@ length(hfbi::HFBIterator) = length(hfbi.es)
 
 
 """
-`hfb(system, A; maxkappa)` constructs a `HFBIterator` object.
+$(SIGNATURES)
+
+`hfb` constructs an `HFBIterator` object.
 
 Arguments:
 
@@ -156,9 +172,10 @@ function hfb(system, A; maxkappa=1)
 end
 
 """
-`gamma_delta(system, rho, kappa)` calculates the `gamma` and `delta`
-matrices from the `rho` and `kappa`. It also needs a system, since
-the `gamma` and `delta` also include the interaction `V(i,j,k,l)`.
+$(SIGNATURES)
+
+Calculates the `gamma` and `delta` matrices from the `rho` and `kappa`. It also needs a
+system, since the `gamma` and `delta` also include the interaction `V(i,j,k,l)`.
 """
 function gamma_delta(system::HFBSystem, rho::Matrix, kappa::Matrix)
     M = length(system)
@@ -177,7 +194,11 @@ function gamma_delta(system::HFBSystem, rho::Matrix, kappa::Matrix)
     gamma,delta
 end
 
-"""`gamma_delta(::HFBState)` is a convenience wrapper it directly from a `HFBState`"""
+"""
+$(SIGNATURES)
+
+A convenience wrapper for calculating `gamma` and `delta` from `HFBState`
+"""
 gamma_delta(state::HFBState) = gamma_delta(state.system, state.rho, state.kappa)
 
 import Hafta: energy
@@ -229,10 +250,12 @@ end
 solve_state(system,N,lambda,T,gamma,delta) = solve_state(system,T,gamma,delta,lambda)
 
 """
+$(SIGNATURES)
+
 `iterate_lambda` uses binary search to find the next solution.
 
-The underlying assumption is that the particle number of the HFB solution
-is a monotonically increasing function of lambda.
+The underlying assumption is that the particle number of the HFB solution is a monotonically
+increasing function of lambda.
 """
 function iterate_lambda(system::HFBSystem, A, gamma, delta; lambdaepsilon=1e-12, nepsilon=lambdaepsilon, maxiters=100, verbose=false)
     if verbose @show lambdaepsilon nepsilon end

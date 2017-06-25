@@ -1,5 +1,7 @@
 module HartreeFock
 
+using DocStringExtensions
+
 using Hafta
 import Hafta: energy, iterate!, solve!
 import Base: size
@@ -8,10 +10,15 @@ export hartreefock
 
 # Hartree-Fock iteration
 """
+$(TYPEDEF)
+
 The `HartreeFockIterator` is what stores the state of the iteration.
 
 A `HartreeFockIterator` object is the basis, which then can be iterated to solve
 the equations. The object should be constructed with `HartreeFock.hartreefock`.
+
+# Fields
+$(FIELDS)
 """
 mutable struct HartreeFockIterator{T <: Hafta.ManyBodySystem}
     # setup
@@ -24,6 +31,8 @@ mutable struct HartreeFockIterator{T <: Hafta.ManyBodySystem}
 end
 
 """
+$(SIGNATURES)
+
 `hartreefock(system, A)` constructs a `HartreeFockIterator` object.
 
 Arguments:

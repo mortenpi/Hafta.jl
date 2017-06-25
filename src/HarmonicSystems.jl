@@ -1,6 +1,8 @@
 # The 2D harmonic oscillator
 module HarmonicSystems
 
+using DocStringExtensions
+
 using Hafta
 import Hafta: H0, V, energy, spin, parity
 
@@ -22,10 +24,15 @@ function nshells end
 # ===================================================================
 
 """
+$(TYPEDEF)
+
 Creates a `Hafta.ManyBodySystem` that represents a one-dimensional harmonic
 oscillator with a delta-interaction.
 
 The constructor is `Harmonic1DFermionSystem(N,vcoef)`.
+
+# Fields
+$(FIELDS)
 """
 mutable struct Harmonic1DFermionSystem <: Hafta.ManyBodySystem
     shells::Int

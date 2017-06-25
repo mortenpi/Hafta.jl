@@ -1,10 +1,14 @@
 module Hafta
 
+using DocStringExtensions
+
 abstract type QuantumBasis end
 
 """
-A `ManyBodySystem` is the abstract type that defines an pairwise interacting
-quantum system. It should have the following methods:
+$(TYPEDEF)
+
+A `ManyBodySystem` is the abstract type that defines a pairwise interacting quantum system.
+It should have the following methods:
 
   - `Base.length(s::T) -> Int`
   - `H0(s::T, i, j) -> Float64`
