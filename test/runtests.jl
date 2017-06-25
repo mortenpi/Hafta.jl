@@ -7,6 +7,8 @@ end
 
 import Hafta
 
+@testset "Hafta tests" begin
+
 @testset "HarmonicOscillator" begin
     @test Hafta.HarmonicOscillator.wmatrix_arridx_fromsorted(36,46,37,22) == 22907
     @test Hafta.HarmonicOscillator.wmatrix_arridx_fromsorted_recursive(36,46,37,22) == 22907
@@ -43,7 +45,7 @@ end
 
 @testset "HFB" begin
     # The HFB module uses more optimized routines now to calculate the Vbar and
-    # Γ and Δ fields. This compares them to the older and slower routines. 
+    # Γ and Δ fields. This compares them to the older and slower routines.
     Vbar_simple(s::Hafta.HFB.HFBSystem, i,j,k,l) = Hafta.V(s.system, i,j,k,l) - Hafta.V(s.system, i,j,l,k)
 
     s = Hafta.HFB.HFBSystem(Hafta.Harmonic2DSystem(3, -1.0))
@@ -76,3 +78,5 @@ end
 end
 
 include("qrpa.jl")
+
+end
