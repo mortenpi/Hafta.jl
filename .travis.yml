@@ -4,6 +4,12 @@ language: julia
 git:
   depth: 99999
 
+before_install:
+  - echo "$DOCUMENTER_DEPLOY_KEY"
+
+before_script:
+  - julia envshow.jl
+
 julia:
   - 0.4
 
